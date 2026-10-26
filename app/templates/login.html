@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="{{ i18n.current() }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="{{ t('app_title') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+  <form class="login-form" method="post" action="/login">
+    <h1>
+      <img class="brand-icon" src="/static/icon.svg" alt="" width="26" height="26">
+      {{ t('sign_in') }}
+    </h1>
+    {% if error %}
+    <p class="error">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+      {{ error }}
+    </p>
+    {% endif %}
+    <input type="text" name="username" placeholder="{{ t('username') }}" autofocus required>
+    <input type="password" name="password" placeholder="{{ t('password') }}" required>
+    <button type="submit">{{ t('log_in') }}</button>
+    <p class="lang-switch login-lang">{% for code in i18n.LANGUAGES %}<a href="/lang/{{ code }}" class="{{ 'active' if i18n.current() == code }}" hreflang="{{ code }}">{{ code | upper }}</a>{% endfor %}</p>
+  </form>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<div class="system-status" id="system-status">
+  {% for channel in channels %}
+  <span class="status-pill ok">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    {{ channel }}
+  </span>
+  {% else %}
+  <span class="status-pill off">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+    {{ t('no_channels') }}
+  </span>
+  {% endfor %}
+
+  <span class="status-pill {{ 'ok' if mqtt_ok else ('error' if mqtt_enabled else 'off') }}">
+    {% if mqtt_ok %}
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    {% elif mqtt_enabled %}
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    {% else %}
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+    {% endif %}
+    {{ t('mqtt_connected') if mqtt_ok else (t('mqtt_not_connected') if mqtt_enabled else t('mqtt_not_configured')) }}
+  </span>
+</div>

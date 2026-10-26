@@ -1,0 +1,44 @@
+# Copy to config.yml and edit. Reloaded automatically when the file changes
+# (no container restart needed, except for new MQTT topics).
+#
+# Examples are for yi-hack cameras (yi-hack-MStar / yi-hack-Allwinner / v2):
+# enable RTSP (RTSP_STREAM=both for the low-res substream), FTP upload of the
+# motion clips and MQTT in the camera's web interface.
+
+cameras:
+  - name: garden
+    # Low-res substream used for the live grid (cheap on CPU/bandwidth).
+    # If your camera only has one stream, use the same URL for both.
+    # With two different URLs, MediaMTX needs a second path "<name>_sub" (see mediamtx/mediamtx.yml.example).
+    rtsp_sub: rtsp://192.168.1.50/ch0_1.h264
+    # Full-res stream, played when a tile is expanded.
+    rtsp_main: rtsp://192.168.1.50/ch0_0.h264
+    # Folder (inside the container, see docker-compose volumes) with the
+    # motion-triggered .mp4 files. Subfolders are scanned recursively.
+    recordings_path: /recordings/garden
+    # HTTP commands to switch the camera on and off.
+    on_url: http://192.168.1.50/cgi-bin/camera_settings.sh?switch_on=yes
+    off_url: http://192.168.1.50/cgi-bin/camera_settings.sh?switch_on=no
+    # Optional: endpoint returning JSON with a SWITCH_ON field ("yes"/"no"),
+    # used to show the real ON/OFF state on the Cameras page.
+    status_url: http://192.168.1.50/cgi-bin/get_configs.sh?conf=camera
+    # Optional: JSON with uptime / wlan_strength / fw_version, shown on the
+    # Cameras page. Default: /cgi-bin/status.json on the host of status_url.
+    # info_url: http://192.168.1.50/cgi-bin/status.json
+    # Optional: shown on the Cameras page; default: host of status_url / rtsp URLs.
+    # ip: 192.168.1.50
+    # Optional: MQTT topic and message the camera publishes on motion
+    # (yi-hack: "<MQTT prefix>/motion_detection" with "motion_start").
+    # This is what triggers the popup, the counters and the notifications.
+    mqtt_topic: yicam-garden/motion_detection
+    mqtt_message: motion_start
+
+  - name: garage
+    rtsp_sub: rtsp://192.168.1.51/ch0_1.h264
+    rtsp_main: rtsp://192.168.1.51/ch0_0.h264
+    recordings_path: /recordings/garage
+    on_url: http://192.168.1.51/cgi-bin/camera_settings.sh?switch_on=yes
+    off_url: http://192.168.1.51/cgi-bin/camera_settings.sh?switch_on=no
+    status_url: http://192.168.1.51/cgi-bin/get_configs.sh?conf=camera
+    mqtt_topic: yicam-garage/motion_detection
+    mqtt_message: motion_start

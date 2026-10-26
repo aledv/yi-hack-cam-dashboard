@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nav_cameras') }}{% endblock %}
+{% block content %}
+
+<div class="diagnostics">
+  <div id="system-status" class="system-status loading"
+       hx-get="/api/system/status" hx-trigger="load" hx-swap="outerHTML">
+    <span class="status-pill">{{ t('checking') }}</span>
+  </div>
+
+  {% if channels %}
+  <div class="test-actions">
+    {% for code, label in channels %}
+    <button hx-post="/api/notify/test" hx-vals='{"channel": "{{ code }}"}'
+            hx-target="#test-feedback" hx-swap="innerHTML">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      <span>{{ t('test_channel', channel=label) }}</span>
+    </button>
+    {% endfor %}
+    <span id="test-feedback"></span>
+  </div>
+  {% endif %}
+</div>
+
+<div class="cameras-list">
+  {% for cam in cameras %}
+  <div class="camera-row">
+    <span class="camera-name">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l5-3v10l-5-3"/></svg>
+      {{ cam.name }}
+    </span>
+
+    <div id="toggle-{{ cam.name }}" class="switch loading"
+         hx-get="/api/cameras/{{ cam.name }}/status" hx-trigger="load" hx-swap="outerHTML">
+      <span class="slider"></span>
+    </div>
+    <span id="info-{{ cam.name }}" class="cam-info"></span>
+
+    <div class="notify-prefs" id="notify-{{ cam.name }}">
+      <label>
+        <input type="checkbox" name="notify"
+               {% if settings_map[cam.name].notify %}checked{% endif %}
+               hx-post="/api/cameras/{{ cam.name }}/notify-prefs"
+               hx-include="#notify-{{ cam.name }} input" hx-swap="none">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        {{ t('notifications') }}
+      </label>
+    </div>
+
+    {% if cam.mqtt_topic %}
+    <button class="test-motion-btn" hx-post="/api/cameras/{{ cam.name }}/test-motion"
+            hx-target="#motion-feedback-{{ cam.name }}" hx-swap="innerHTML" title="{{ t('test_motion_title') }}">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+      <span>{{ t('test_motion') }}</span>
+    </button>
+    <span id="motion-feedback-{{ cam.name }}"></span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<p class="hint">
+  <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="8.01"/><line x1="12" y1="11" x2="12" y2="16"/></svg>
+  <span>{{ t('cameras_hint') | safe }}</span>
+</p>
+{% endblock %}

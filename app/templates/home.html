@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nav_live') }}{% endblock %}
+{% block content %}
+<script src="/static/vendor/hls.min.js"></script>
+
+{% if not cameras %}
+  <p class="empty">
+    <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l22 22"/><path d="M21 6.5L15 10.5V6a2 2 0 00-2-2H8.5"/><path d="M3 6a2 2 0 00-2 2v8a2 2 0 002 2h10.5"/></svg>
+    {{ t('no_cameras') }}
+  </p>
+{% else %}
+<div class="grid-controls">
+  <label for="colSelect">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+    {{ t('columns') }}
+  </label>
+  <select id="colSelect">
+    <option value="auto">{{ t('auto') }}</option>
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+  </select>
+  <button id="reloadAllBtn" type="button" class="reload-all">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+    {{ t('reload_all') }}
+  </button>
+</div>
+
+<div class="camera-grid" id="cameraGrid" style="--cols: {{ cols }};" data-count="{{ cameras|length }}">
+  {% for cam in cameras %}
+  <div class="camera-tile" id="tile-{{ cam.name }}"{% if cam.status_url %} data-has-status="1"{% endif %}>
+    <video id="video-{{ cam.name }}" muted autoplay playsinline></video>
+    <span class="camera-label"><span class="live-dot"></span>{{ cam.name }}</span>
+    <span class="expand-hint">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      {{ t('esc_to_exit') }}
+    </span>
+    <button class="tile-reload" id="reload-{{ cam.name }}" type="button" aria-label="{{ t('reload_live') }}" title="{{ t('reload_live') }}">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+    </button>
+    <button class="tile-audio" id="audio-{{ cam.name }}" type="button" aria-label="{{ t('unmute') }}" title="{{ t('toggle_audio') }}" aria-pressed="false">
+      <svg class="icon icon-sm icon-muted" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      <svg class="icon icon-sm icon-unmuted" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
+    </button>
+    <div class="tile-motion" id="motion-{{ cam.name }}" hidden>
+      <button type="button" class="tile-motion-summary" aria-expanded="false"></button>
+      <div class="tile-motion-list" hidden></div>
+    </div>
+    <span class="tile-error" id="error-{{ cam.name }}"></span>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+  // Lazy-attach each stream when its tile enters the viewport, so cameras
+  // scrolled off-screen (on setups with many cameras) don't waste bandwidth/CPU.
+  // MediaMTX serves HLS on its own port (8888), not through this app.
+  // If you're behind a reverse proxy with HTTPS (e.g. Nginx Proxy
+  // Manager), a hardcoded http:// URL gets blocked by the browser as
+  // mixed content on an https:// page, and port 8888 usually isn't
+  // proxied through your domain anyway. Set MEDIAMTX_PUBLIC_BASE in .env
+  // to the address that actually reaches MediaMTX from the browser (e.g.
+  // a second proxy host/stream forward in your proxy, or just the host's plain
+  // http://<ip>:8888 if you view live only from the LAN). Falls back to
+  // the same hostname:8888, using the page's own protocol, if unset.
+  const mediamtxBase = {{ mediamtx_base | tojson }};
+  function streamUrl(name) {
+    if (mediamtxBase) return `${mediamtxBase}/${name}/index.m3u8`;
+    const host = `${window.location.hostname}:8888`;
+    return `${window.location.protocol}//${host}/${name}/index.m3u8`;
+  }
+  // Grid tiles play the low-res substream (MediaMTX path "<name>_sub") when the
+  // camera has one (rtsp_sub != rtsp_main in config.yml): far less WiFi load on
+  // the cameras. The full-res stream (path "<name>") is used only while a tile
+  // is expanded. Cameras with a single stream use "<name>" for both.
+  const hdStreams = {
+    {% for cam in cameras %}
+    "{{ cam.name }}": streamUrl("{{ cam.name }}"),
+    {% endfor %}
+  };
+  const subStreams = {
+    {% for cam in cameras %}
+    "{{ cam.name }}": streamUrl("{{ cam.name }}{% if cam.rtsp_sub and cam.rtsp_sub != cam.rtsp_main %}_sub{% endif %}"),
+    {% endfor %}
+  };
+  const streams = Object.assign({}, subStreams);
+  function switchStream(name, hd) {
+    const target = hd ? hdStreams[name] : subStreams[name];
+    if (!target || streams[name] === target) return;
+    streams[name] = target;
+    reattach(name);
+  }
+
+  function showError(name, message) {
+    const el = document.getElementById("error-" + name);
+    if (el) el.textContent = message;
+  }
+
+  // Tracks the live players so a background-tab stall can be recovered
+  // (see visibilitychange handler below): background tabs throttle
+  // hls.js's internal timers, so by the time the tab is foregrounded again
+  // the live HLS window has moved past what's buffered and playback just
+  // sits frozen on the last decoded frame instead of catching up on its own.
+  const activePlayers = {};
+
+  // Streams that never error out but also never start playing (e.g.
+  // hls.js retrying a non-fatal manifest/fragment load in a loop) leave the
+  // tile blank forever with nothing in showError -- fatal-only errors are
+  // the only thing that calls it. This watchdog surfaces *something* after
+  // a timeout so a broken cam isn't silently indistinguishable from one
+  // that's just slow to start.
+  const WATCHDOG_MS = 15000;
+
+  function armWatchdog(name, video, src) {
+    const timer = setTimeout(() => {
+      if (video.readyState < 3) {
+        showError(name, T("no_signal", { seconds: WATCHDOG_MS / 1000, src }));
+      }
+    }, WATCHDOG_MS);
+    activePlayers[name].watchdog = timer;
+    video.addEventListener("playing", () => clearTimeout(timer), { once: true });
+  }
+
+  function attach(name, video) {
+    const src = streams[name];
+    if (activePlayers[name]?.watchdog) clearTimeout(activePlayers[name].watchdog);
+    activePlayers[name] = { video };
+    armWatchdog(name, video, src);
+
+    // 1. Prefer native HLS (Safari/iOS)
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+
+        video.src = src;
+        video.load();
+
+        video.addEventListener("loadedmetadata", () => {
+            video.play().catch((e) => {
+                showError(name, T("play_blocked", { error: e.message }));
+            });
+        }, { once: true });
+
+        video.addEventListener("error", () => {
+            const err = video.error;
+
+            const codes = {
+                1: "MEDIA_ERR_ABORTED",
+                2: "MEDIA_ERR_NETWORK",
+                3: "MEDIA_ERR_DECODE",
+                4: "MEDIA_ERR_SRC_NOT_SUPPORTED"
+            };
+
+            showError(
+                name,
+                `video error: ${codes[err?.code] || err?.code} ` +
+                `(src: ${src})`
+            );
+        }, { once: true });
+
+        return;
+    }
+
+    // 2. Hls.js / MSE (Chrome, Firefox, desktop, etc.)
+    if (Hls.isSupported()) {
+
+        const hls = new Hls({
+            lowLatencyMode: true
+        });
+        activePlayers[name].hls = hls;
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error(`[${name}] HLS ERROR`, data);
+
+            if (data.fatal) {
+                const code = data.response?.code ?? T("no_response");
+
+                showError(
+                    name,
+                    `hls.js ${data.type}: ${data.details} ` +
+                    `[HTTP ${code}] url: ${data.url || src}`
+                );
+
+                hls.destroy();
+            }
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch((e) => {
+                showError(name, T("play_blocked", { error: e.message }));
+            });
+        });
+
+        hls.loadSource(src);
+        hls.attachMedia(video);
+
+        return;
+    }
+
+    showError(name, T("hls_unsupported"));
+  }
+
+  // Reattach a stream from scratch: destroys the old hls.js instance (if
+  // any) and re-runs attach() on the same <video>, so it re-fetches the
+  // current live playlist instead of trying to resume a stale buffer.
+  function reattach(name) {
+    const player = activePlayers[name];
+    if (!player) return;
+    if (player.hls) player.hls.destroy();
+    showError(name, "");
+    attach(name, player.video);
+  }
+
+  // Manual reload button, for a tile that's frozen/blank without waiting
+  // on the tab-visibility recovery or a full page refresh.
+  document.querySelectorAll(".tile-reload").forEach((btn) => {
+    const name = btn.id.replace("reload-", "");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      btn.classList.add("is-reloading");
+      setTimeout(() => btn.classList.remove("is-reloading"), 700);
+      reattach(name);
+    });
+  });
+
+  // Reload every attached camera at once.
+  document.getElementById("reloadAllBtn").addEventListener("click", (e) => {
+    const btn = e.currentTarget;
+    btn.classList.add("is-reloading");
+    setTimeout(() => btn.classList.remove("is-reloading"), 700);
+    Object.keys(activePlayers).forEach((name) => reattach(name));
+  });
+
+  // Recover frozen tiles when the tab regains visibility.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    Object.keys(activePlayers).forEach((name) => {
+      const { video } = activePlayers[name];
+      // readyState < 3 (HAVE_FUTURE_DATA) or a paused element means the
+      // stream didn't come back on its own -- kick it back to the live edge.
+      if (video.paused || video.readyState < 3) {
+        reattach(name);
+      }
+    });
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const video = entry.target;
+        const name = video.id.replace("video-", "");
+        attach(name, video);
+        observer.unobserve(video);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  // Cameras confirmed powered off never get a stream attached (and are
+  // skipped by "Reload all", since reattach() is a no-op for a camera
+  // that was never added to activePlayers): the red banner below explains
+  // why, instead of leaving the tile stuck on the "no signal" watchdog
+  // message a dead RTSP source would otherwise produce.
+  const offCameras = new Set();
+
+  function markOff(name) {
+    offCameras.add(name);
+    showError(name, T("camera_off"));
+    document.getElementById("tile-" + name)?.classList.add("is-off");
+  }
+
+  async function checkPower(name) {
+    try {
+      const resp = await fetch(`/api/cameras/${encodeURIComponent(name)}/power-status`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data.is_on === false) markOff(name);
+      // Not answering at all: say so right away, but still try the live --
+      // the stream sometimes works while the camera's web server is stuck.
+      else if (data.online === false) showError(name, T("camera_unreachable"));
+    } catch {
+      // Status endpoint unreachable -- treat as unknown, not off.
+    }
+  }
+
+  const statusChecks = [];
+  document.querySelectorAll(".camera-tile[data-has-status]").forEach((tile) => {
+    const name = tile.id.replace("tile-", "");
+    statusChecks.push(checkPower(name));
+  });
+
+  Promise.all(statusChecks).finally(() => {
+    document.querySelectorAll("video[id^='video-']").forEach((v) => {
+      const name = v.id.replace("video-", "");
+      if (!offCameras.has(name)) observer.observe(v);
+    });
+  });
+
+  // Click a tile -> expand it to fill the tab (CSS overlay, not the
+  // browser's native Fullscreen API, so the tab bar/toolbar stay visible).
+  // The tile node is moved to <body> while expanded so `position: fixed`
+  // always resolves against the real viewport -- if it stayed nested
+  // inside .camera-grid/main, any ancestor with a CSS transform/filter
+  // (e.g. the nav's backdrop-filter blur) could create its own containing
+  // block and confine the "fixed" tile to that ancestor instead of the
+  // full tab, which is what caused it to silently not expand before.
+  // A comment placeholder marks each tile's original spot so it can be
+  // moved back to exactly the right place in the grid on collapse.
+  document.querySelectorAll(".camera-tile").forEach((tile) => {
+    const placeholder = document.createComment("slot-" + tile.id);
+    tile.parentNode.insertBefore(placeholder, tile);
+    tile._placeholder = placeholder;
+
+    tile.addEventListener("click", () => {
+      const alreadyExpanded = tile.classList.contains("is-expanded");
+      document.querySelectorAll(".camera-tile.is-expanded").forEach(collapseTile);
+      if (!alreadyExpanded) expandTile(tile);
+    });
+  });
+
+  function expandTile(tile) {
+    document.body.appendChild(tile);
+    tile.classList.add("is-expanded");
+    document.body.classList.add("has-expanded-tile");
+    switchStream(tile.id.replace(/^tile-/, ""), true);
+  }
+  function collapseTile(tile) {
+    if (tile._placeholder && tile._placeholder.parentNode) {
+      tile._placeholder.parentNode.insertBefore(tile, tile._placeholder);
+    }
+    tile.classList.remove("is-expanded");
+    document.body.classList.remove("has-expanded-tile");
+    switchStream(tile.id.replace(/^tile-/, ""), false);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".camera-tile.is-expanded").forEach(collapseTile);
+    }
+  });
+
+  // Audio: tiles start muted (browsers block autoplay with sound); the
+  // speaker button unmutes just that tile. Needs AAC audio from the camera
+  // (yi-hack RTSP_AUDIO=aac): PCM is dropped by HLS in the browser.
+  document.querySelectorAll(".tile-audio").forEach((btn) => {
+    const name = btn.id.replace("audio-", "");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const video = document.getElementById("video-" + name);
+      video.muted = !video.muted;
+      if (!video.muted) video.play().catch(() => {});
+      btn.classList.toggle("is-on", !video.muted);
+      btn.setAttribute("aria-pressed", String(!video.muted));
+      btn.setAttribute("aria-label", video.muted ? T("unmute") : T("mute"));
+    });
+  });
+
+  // Today's motion events per camera (stored by the app from MQTT): count and
+  // last time on each tile, tap for the list of times; a time with a matching
+  // clip opens it. Refreshed every minute and on each live motion event.
+  function localMidnight() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() / 1000;
+  }
+  function hhmm(ts) {
+    return new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  async function loadMotion() {
+    let data;
+    try {
+      const resp = await fetch(`/api/motion?since=${localMidnight()}`);
+      if (!resp.ok) return;
+      data = await resp.json();
+    } catch {
+      return;
+    }
+    document.querySelectorAll(".tile-motion").forEach((box) => {
+      const name = box.id.replace("motion-", "");
+      const list = data[name] || [];
+      const summary = box.querySelector(".tile-motion-summary");
+      const panel = box.querySelector(".tile-motion-list");
+      box.hidden = false;
+      summary.textContent = list.length
+        ? T("motion_summary", {
+            count: list.length,
+            events: T(list.length === 1 ? "motion_one" : "motion_many"),
+            time: hhmm(list[0].ts),
+          })
+        : T("motion_none");
+      summary.disabled = !list.length;
+      panel.replaceChildren(
+        ...list.map((ev) => {
+          const el = document.createElement(ev.clip ? "a" : "span");
+          el.textContent = hhmm(ev.ts);
+          if (ev.clip) {
+            el.href = `/recordings/view?path=${encodeURIComponent(ev.clip)}&back=/`;
+            el.title = T("open_clip");
+          }
+          return el;
+        })
+      );
+    });
+  }
+  document.querySelectorAll(".tile-motion").forEach((box) => {
+    box.addEventListener("click", (e) => e.stopPropagation());
+    const summary = box.querySelector(".tile-motion-summary");
+    summary.addEventListener("click", () => {
+      const panel = box.querySelector(".tile-motion-list");
+      panel.hidden = !panel.hidden;
+      summary.setAttribute("aria-expanded", String(!panel.hidden));
+    });
+  });
+  loadMotion();
+  setInterval(loadMotion, 60000);
+  window.addEventListener("camera-motion", () => loadMotion());
+
+  // Column selector, remembered across visits via localStorage.
+  const grid = document.getElementById("cameraGrid");
+  const colSelect = document.getElementById("colSelect");
+  const AUTO_COLS = {{ cols }};
+
+  function applyCols(value) {
+    grid.style.setProperty("--cols", value === "auto" ? AUTO_COLS : value);
+  }
+
+  const saved = localStorage.getItem("camGridCols") || "auto";
+  colSelect.value = saved;
+  applyCols(saved);
+
+  colSelect.addEventListener("change", () => {
+    localStorage.setItem("camGridCols", colSelect.value);
+    applyCols(colSelect.value);
+  });
+</script>
+{% endif %}
+{% endblock %}

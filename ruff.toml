@@ -1,0 +1,16 @@
+# Python linter, run in CI before the tests. Locally: ruff check . && ruff format --check .
+line-length = 120
+target-version = "py310"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[lint.flake8-bugbear]
+# FastAPI declares parameters with File()/Form()/Query() as defaults: that's the intended usage
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Query", "fastapi.Depends"]
+
+[lint.per-file-ignores]
+# main.py loads .env (load_dotenv) before importing the modules that read environment variables;
+# test_web.py sets the environment those modules need before importing them
+"app/main.py" = ["E402"]
+"app/tests/test_web.py" = ["E402"]

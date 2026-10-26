@@ -1,0 +1,31 @@
+# Dashboard + MediaMTX. Copy .env.example -> .env, config.yml.example -> config.yml,
+# mediamtx/mediamtx.yml.example -> mediamtx/mediamtx.yml, set RECORDINGS_DIR, then:
+#   docker compose up -d
+# To build the image yourself instead of pulling it: docker compose up -d --build
+services:
+  camera-app:
+    image: ghcr.io/aledv/yi-hack-cam-dashboard:${APP_TAG:-latest}
+    build: ./app
+    container_name: camera-app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+      - ./data:/app/data
+      # Folder where the cameras upload their clips (e.g. your FTP server's data folder)
+      - ${RECORDINGS_DIR:-./recordings}:/recordings:ro
+    ports:
+      - "${APP_PORT:-8055}:8000"
+    depends_on:
+      - mediamtx
+
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.1@sha256:5ce2a948eb68df06ce2e13870db8df8e30d516ac4dc40e04bfe8aee3bdf7be40
+    container_name: mediamtx
+    restart: unless-stopped
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      - "8888:8888"   # HLS (used by the Live page)
+      - "8889:8889"   # WebRTC
+      - "8554:8554"   # RTSP

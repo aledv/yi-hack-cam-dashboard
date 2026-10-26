@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="{{ i18n.current() }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t('app_title') }}{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="{{ t('app_title') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/htmx.min.js"></script>
+</head>
+<body>
+  <nav class="topnav">
+    <div class="brand">
+      <img class="brand-icon" src="/static/icon.svg" alt="" width="22" height="22">
+      <span>{{ t('app_title') }}</span>
+      <span class="brand-dot"></span>
+    </div>
+    <a href="/" class="{{ 'active' if request.url.path == '/' }}">
+      <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l5-3v10l-5-3"/></svg>
+      <span>{{ t('nav_live') }}</span>
+    </a>
+    <a href="/recordings" class="{{ 'active' if request.url.path.startswith('/recordings') }}">
+      <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4V8z"/></svg>
+      <span>{{ t('nav_recordings') }}</span>
+    </a>
+    <a href="/cameras" class="{{ 'active' if request.url.path == '/cameras' }}">
+      <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="2"/></svg>
+      <span>{{ t('nav_cameras') }}</span>
+    </a>
+    <span class="lang-switch" aria-label="{{ t('language') }}">
+      {% for code in i18n.LANGUAGES %}<a href="/lang/{{ code }}" class="{{ 'active' if i18n.current() == code }}" hreflang="{{ code }}">{{ code | upper }}</a>{% endfor %}
+    </span>
+    <a href="/logout" class="logout">
+      <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>{{ t('nav_logout') }}</span>
+    </a>
+  </nav>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <div id="motion-toasts" class="motion-toasts"></div>
+  <script>
+    // UI strings for scripts, in the page's language: T("key", {name: value})
+    window.I18N = {{ i18n.table() | tojson }};
+    window.T = (key, values = {}) =>
+      (window.I18N[key] || key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "");
+  </script>
+  <script>
+    (function () {
+      const container = document.getElementById("motion-toasts");
+      const source = new EventSource("/events");
+
+      const alertIcon = `<svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16.01"/></svg>`;
+
+      source.onmessage = (e) => {
+        let data;
+        try { data = JSON.parse(e.data); } catch { return; }
+        showToast(data);
+        window.dispatchEvent(new CustomEvent("camera-motion", { detail: data }));
+      };
+
+      function showToast({ camera, ts }) {
+        const time = new Date(ts * 1000).toLocaleTimeString();
+        const date = new Date(ts * 1000).toLocaleDateString();
+
+        const toast = document.createElement("div");
+        toast.className = "motion-toast";
+        toast.innerHTML = `
+          <div class="motion-toast-icon">${alertIcon}</div>
+          <div class="motion-toast-body">
+            <strong>${T("motion_detected")}</strong>
+            <span>${T("toast_camera", { camera })}</span>
+            <span>${time} — ${date}</span>
+            <a href="/recordings?camera=${encodeURIComponent(camera)}">${T("see_recordings")}</a>
+          </div>
+          <button class="motion-toast-close" aria-label="${T("close")}">&times;</button>
+        `;
+        toast.querySelector(".motion-toast-close").addEventListener("click", () => toast.remove());
+        container.prepend(toast);
+
+        setTimeout(() => toast.remove(), 12000);
+      }
+    })();
+  </script>
+</body>
+</html>

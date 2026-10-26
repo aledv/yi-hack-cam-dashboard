@@ -1,0 +1,7 @@
+data/
+__pycache__/
+.venv*/
+.env
+config.yml
+mediamtx/mediamtx.yml
+.ruff_cache/

@@ -1,0 +1,42 @@
+# Minimal MediaMTX config: pulls RTSP from your cameras and republishes as
+# HLS/WebRTC with passthrough (remux only, no re-encode -> cheap on CPU).
+#
+# NOTE: paths here must be kept in sync with config.yml's rtsp_sub URLs.
+# The camera-app reads config.yml and links to /hls/<name>/index.m3u8 --
+# use the same <name> here as in config.yml.
+
+hls: yes
+hlsEncryption: no
+hlsSegmentCount: 7
+hlsSegmentDuration: 1s
+# hlsPartDuration intentionally NOT set: leaving it unset disables
+# Low-Latency HLS, falling back to regular HLS. LL-HLS requires HTTPS on
+# MediaMTX itself (hlsEncryption) to work correctly on Apple devices --
+# every browser on iPhone/iPad uses Apple's native HLS engine underneath
+# regardless of branding (Chrome, Safari, etc. -- Apple requires it), and
+# without that TLS requirement met, LL-HLS streams fail or glitch badly
+# there even when they work fine on desktop Chrome (which plays HLS via
+# hls.js/MediaSource Extensions instead, sidestepping this Apple-specific
+# requirement entirely). Regular HLS trades a few seconds of extra
+# latency for working reliably everywhere, including iOS.
+hlsVariant: mpegts
+
+webrtc: yes
+
+paths:
+  # One entry per camera, with the same name as in config.yml (full-res stream)...
+  garden:
+    source: rtsp://192.168.1.50/ch0_0.h264
+    rtspTransport: tcp
+  # ...plus "<name>_sub" for the low-res substream, when rtsp_sub differs from
+  # rtsp_main in config.yml (the grid plays it; an expanded tile plays "<name>").
+  garden_sub:
+    source: rtsp://192.168.1.50/ch0_1.h264
+    rtspTransport: tcp
+
+  garage:
+    source: rtsp://192.168.1.51/ch0_0.h264
+    rtspTransport: tcp
+  garage_sub:
+    source: rtsp://192.168.1.51/ch0_1.h264
+    rtspTransport: tcp

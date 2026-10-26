@@ -1,0 +1,633 @@
+/* ============================================================
+   Design tokens
+   A calm, modern control-room aesthetic: deep indigo surfaces,
+   an electric-blue accent for live/interactive state, warm amber
+   for caution, coral for motion alerts. Space Grotesk carries the
+   personality on headings/nav; Inter is the neutral body face;
+   JetBrains Mono marks anything that reads like data (timestamps,
+   camera identifiers, status).
+   ============================================================ */
+:root {
+  --bg: #0a0c14;
+  --panel: #12151f;
+  --panel-raised: #1a1f2e;
+  --panel-hover: #202638;
+  --border: #262c3d;
+  --border-soft: #1b202e;
+
+  --text: #eef0f7;
+  --text-dim: #9aa2b8;
+  --text-faint: #5c6480;
+
+  --accent: #5b8cff;
+  --accent-strong: #82a5ff;
+  --accent-soft: rgba(91, 140, 255, 0.14);
+  --accent-text: #08101f;
+
+  --alert: #ff6b6b;
+  --alert-soft: rgba(255, 107, 107, 0.14);
+  --warn: #ffb74d;
+  --warn-soft: rgba(255, 183, 77, 0.14);
+
+  --radius-lg: 16px;
+  --radius: 11px;
+  --radius-sm: 7px;
+
+  --font-display: "Space Grotesk", var(--font-ui);
+  --font-ui: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --shadow-panel: 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.32);
+  --shadow-lift: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 1000px 560px at 12% -8%, rgba(91,140,255,0.09), transparent 55%),
+    radial-gradient(ellipse 760px 520px at 100% 0%, rgba(255,183,77,0.05), transparent 55%);
+  background-attachment: fixed;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+a { color: inherit; }
+a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
+::selection { background: var(--accent-soft); color: var(--accent-strong); }
+
+.icon { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+.icon-sm { width: 14px; height: 14px; }
+
+/* ============================================================
+   Top nav
+   ============================================================ */
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 22px;
+  height: 64px;
+  background: rgba(18, 21, 31, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.topnav .brand {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-display); font-weight: 600; font-size: 15px;
+  color: var(--text); margin-right: 22px; letter-spacing: -0.01em;
+}
+.topnav .brand .brand-icon { display: block; width: 22px; height: 22px; flex-shrink: 0; }
+.topnav .brand-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 8px var(--accent); animation: pulse-dot 2.4s ease-in-out infinite;
+  margin-left: 2px;
+}
+.topnav a {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 13px 16px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+.topnav a .icon { color: currentColor; }
+.topnav a:hover { color: var(--text); background: var(--panel-raised); }
+.topnav a.active { color: var(--accent-strong); background: var(--accent-soft); }
+.topnav .logout { margin-left: auto; }
+.topnav .logout:hover { color: var(--alert); background: var(--alert-soft); }
+.lang-switch { display: flex; align-items: center; gap: 2px; }
+.topnav .lang-switch { margin-left: auto; }
+.topnav .lang-switch + .logout { margin-left: 0; }
+.lang-switch a {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  padding: 6px 8px !important; color: var(--text-faint); text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.lang-switch a.active { color: var(--accent-strong); background: var(--accent-soft); }
+.login-lang { justify-content: center; margin: 4px 0 0; }
+
+main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+h1, h2, h3 { font-family: var(--font-display); }
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 3px var(--accent-soft); }
+  50% { box-shadow: 0 0 0 7px transparent; }
+}
+
+/* ============================================================
+   Live grid
+   ============================================================ */
+.grid-controls {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; font-size: 13px; color: var(--text-dim);
+}
+.grid-controls label { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+.grid-controls select {
+  background: var(--panel-raised); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: 13px; font-family: var(--font-ui); font-weight: 500;
+  cursor: pointer; transition: border-color 0.15s;
+}
+.grid-controls select:hover { border-color: var(--accent); }
+.grid-controls select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.camera-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 10px;
+  height: calc(100vh - 148px);
+}
+.camera-grid[data-count="1"] { grid-template-columns: 1fr; }
+
+.camera-tile {
+  position: relative;
+  background: #000;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.camera-tile:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft); }
+.camera-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Viewfinder-style corner brackets -- the one signature flourish. */
+.camera-tile::before, .camera-tile::after {
+  content: ""; position: absolute; width: 20px; height: 20px;
+  opacity: 0; transition: opacity 0.15s; pointer-events: none; z-index: 2;
+}
+.camera-tile::before { top: 8px; left: 8px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); border-radius: 3px 0 0 0; }
+.camera-tile::after { bottom: 8px; right: 8px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); border-radius: 0 0 3px 0; }
+.camera-tile:hover::before, .camera-tile:hover::after { opacity: 0.9; }
+
+.camera-tile video {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+.camera-grid[data-count="1"] .camera-tile video { object-fit: contain; }
+
+/* In-tab "fullscreen": JS moves the tile node itself to <body> and adds
+   this class, so position:fixed always resolves against the real
+   viewport (immune to any ancestor with a transform/filter that would
+   otherwise create its own containing block). Not the native browser
+   Fullscreen API -- tabs and toolbar stay visible. */
+.camera-tile.is-expanded {
+  position: fixed; inset: 0; z-index: 200;
+  border-radius: 0; border: none; cursor: zoom-out;
+  display: flex; align-items: center; justify-content: center;
+  background: #000;
+}
+.camera-tile.is-expanded video { width: 100%; height: 100%; object-fit: contain; }
+.camera-tile.is-expanded .camera-label { font-size: 13px; }
+.expand-hint {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  display: none; align-items: center; gap: 6px;
+  background: rgba(10,12,20,0.7); border: 1px solid var(--border);
+  color: var(--text-dim); font-size: 11.5px; font-family: var(--font-mono);
+  padding: 5px 10px; border-radius: 999px;
+}
+.camera-tile.is-expanded .expand-hint { display: flex; }
+body.has-expanded-tile { overflow: hidden; }
+
+.camera-label {
+  position: absolute; bottom: 8px; left: 8px; z-index: 2;
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(10,12,20,0.72);
+  padding: 5px 10px 5px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 12px; letter-spacing: 0.02em;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+  box-shadow: 0 0 6px var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.tile-reload {
+  position: absolute; bottom: 8px; right: 8px; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0;
+  background: rgba(10,12,20,0.72); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm); color: var(--text-dim);
+  cursor: pointer; opacity: 0.75; transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.tile-reload:hover { opacity: 1; color: var(--text); background: rgba(10,12,20,0.9); }
+/* Only over the grid thumbnail -- not shown once a tile is expanded. */
+.camera-tile.is-expanded .tile-reload { display: none; }
+/* Powered-off cameras have nothing to reload -- see the "Telecamera
+   disattivata" banner in .tile-error instead. */
+.camera-tile.is-off .tile-reload { display: none; }
+.tile-audio {
+  position: absolute; bottom: 8px; right: 52px; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0;
+  background: rgba(10,12,20,0.72); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm); color: var(--text-dim);
+  cursor: pointer; opacity: 0.75; transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.tile-audio:hover { opacity: 1; color: var(--text); background: rgba(10,12,20,0.9); }
+.tile-audio .icon-unmuted, .tile-audio.is-on .icon-muted { display: none; }
+.tile-audio.is-on .icon-unmuted { display: block; }
+.tile-audio.is-on { opacity: 1; color: var(--accent-strong); border-color: var(--accent); }
+.camera-tile.is-expanded .tile-audio { right: 12px; bottom: 12px; }
+.camera-tile.is-off .tile-audio { display: none; }
+
+.tile-motion {
+  position: absolute; top: 8px; left: 8px; z-index: 2; max-width: calc(100% - 16px);
+  font-family: var(--font-mono); font-size: 11.5px;
+}
+.tile-motion-summary {
+  background: rgba(10,12,20,0.72); color: var(--text-dim);
+  border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm);
+  padding: 5px 9px; font: inherit; cursor: pointer;
+}
+.tile-motion-summary:disabled { cursor: default; }
+.tile-motion-summary:not(:disabled):hover { color: var(--text); }
+.tile-motion-list {
+  margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;
+  max-height: 120px; overflow-y: auto;
+  background: rgba(10,12,20,0.88); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm); padding: 6px;
+}
+.tile-motion-list[hidden] { display: none; }
+.tile-motion-list span, .tile-motion-list a {
+  padding: 2px 6px; border-radius: 4px; color: var(--text-dim); background: rgba(255,255,255,0.06);
+}
+.tile-motion-list a { color: var(--accent-strong); text-decoration: none; }
+.tile-motion-list a:hover { background: rgba(255,255,255,0.12); }
+.camera-tile.is-expanded .tile-motion { top: 12px; left: 12px; font-size: 13px; }
+.is-reloading svg { animation: spin 0.7s linear; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.reload-all {
+  margin-left: auto; display: flex; align-items: center; gap: 6px;
+  background: var(--panel-raised); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size: 13px; font-family: var(--font-ui); font-weight: 500;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.reload-all:hover { border-color: var(--accent); color: var(--accent-strong); }
+
+.tile-error {
+  position: absolute; left: 8px; right: 8px; top: 50%; transform: translateY(-50%);
+  z-index: 3; display: block; font-family: var(--font-mono); font-size: 10.5px;
+  line-height: 1.4; color: #fff; background: rgba(255, 92, 92, 0.92);
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  word-break: break-word; text-align: center;
+}
+.tile-error:empty { display: none; }
+
+/* ============================================================
+   Filters / buttons (shared)
+   ============================================================ */
+.filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.filters.secondary { margin-top: -4px; margin-bottom: 20px; }
+.filters a {
+  color: var(--text-dim); text-decoration: none;
+  padding: 9px 15px; border: 1px solid var(--border);
+  border-radius: 999px; font-size: 12.5px; font-weight: 500;
+  transition: all 0.15s;
+}
+.filters a:hover { color: var(--text); border-color: var(--text-faint); }
+.filters a.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+
+button {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--panel-raised); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 16px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 13px; font-weight: 500; font-family: var(--font-ui);
+  transition: all 0.15s;
+}
+button:hover { border-color: var(--accent); color: var(--accent-strong); background: var(--panel-hover); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ============================================================
+   Recordings
+   ============================================================ */
+.recordings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.recording-card {
+  display: block; color: inherit;
+  background: var(--panel); border-radius: var(--radius);
+  overflow: hidden; border: 1px solid var(--border-soft);
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.recording-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lift);
+}
+.recording-card img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; background: #000; }
+.no-thumb {
+  aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;
+  background: var(--panel-raised); color: var(--text-faint); font-size: 12px; font-family: var(--font-mono);
+}
+.recording-meta {
+  padding: 12px 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.recording-meta-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.camera-name { font-size: 13px; color: var(--text); font-weight: 600; }
+.recording-date { font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); white-space: nowrap; }
+.download-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-faint); text-decoration: none;
+  width: 38px; height: 38px; border-radius: var(--radius-sm); flex-shrink: 0;
+  border: 1px solid transparent; transition: all 0.15s;
+}
+.download-btn:hover { background: var(--accent-soft); color: var(--accent-strong); border-color: var(--accent); }
+
+.pagination {
+  display: flex; align-items: center; justify-content: center; gap: 18px; margin: 28px 0 10px;
+}
+.page-nav {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-dim); text-decoration: none; padding: 10px 18px;
+  border: 1px solid var(--border); border-radius: 999px; font-size: 13px; font-weight: 500;
+  transition: all 0.15s;
+}
+.page-nav:hover { border-color: var(--accent); color: var(--accent-strong); }
+.page-nav.disabled { color: var(--text-faint); border-color: var(--border-soft); pointer-events: none; opacity: 0.5; }
+.page-info { font-size: 12.5px; color: var(--text-faint); font-family: var(--font-mono); }
+
+/* ============================================================
+   Cameras management
+   ============================================================ */
+.diagnostics {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 14px;
+  background: var(--panel); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg); padding: 14px 18px; margin-bottom: 16px;
+}
+.system-status { display: flex; gap: 10px; flex-wrap: wrap; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 500; padding: 6px 12px;
+  border-radius: 999px; border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.status-pill.ok { color: var(--accent-strong); border-color: var(--accent); background: var(--accent-soft); }
+.status-pill.error { color: var(--alert); border-color: var(--alert); background: var(--alert-soft); }
+.status-pill.off { color: var(--text-faint); }
+
+.test-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.test-feedback {
+  font-size: 12.5px; font-weight: 500; padding: 4px 10px;
+  border-radius: 999px; white-space: nowrap;
+}
+.test-feedback.ok { color: var(--accent-strong); background: var(--accent-soft); }
+.test-feedback.error { color: var(--alert); background: var(--alert-soft); }
+
+
+.cameras-list {
+  background: var(--panel); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: var(--shadow-panel);
+}
+.camera-row {
+  display: flex; align-items: center; gap: 18px;
+  padding: 18px 20px; border-bottom: 1px solid var(--border-soft);
+  transition: background 0.15s;
+}
+.camera-row:last-child { border-bottom: none; }
+.camera-row:hover { background: var(--panel-raised); }
+.camera-row .camera-name {
+  display: flex; align-items: center; gap: 9px;
+  min-width: 130px; font-size: 14px; font-weight: 600; color: var(--text);
+}
+.camera-row .camera-name .icon { color: var(--text-faint); }
+
+.switch {
+  position: relative; display: inline-block; width: 52px; height: 30px; flex-shrink: 0;
+}
+.switch.loading { opacity: 0.35; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--panel-raised); border: 1px solid var(--border);
+  border-radius: 30px; transition: 0.15s;
+}
+.switch .slider::before {
+  content: ""; position: absolute; height: 22px; width: 22px;
+  left: 3px; bottom: 3px; background: var(--text-faint); border-radius: 50%; transition: 0.15s;
+}
+.switch input:checked + .slider { background: var(--accent-soft); border-color: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(22px); background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.switch.unknown .slider { border-color: var(--warn); }
+.switch.unknown .slider::before { background: var(--warn); }
+.status-unknown { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--warn); font-family: var(--font-mono); }
+.cam-info { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); }
+.cam-info .cam-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); flex: none; }
+.cam-info:empty { display: none; }
+.cam-info.online .cam-dot { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+.cam-info.offline { color: var(--warn); }
+.cam-info.offline .cam-dot { background: var(--warn); }
+.status-badge {
+  font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border);
+}
+
+.notify-prefs { display: flex; gap: 20px; margin-left: auto; }
+.notify-prefs label {
+  display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-dim); cursor: pointer;
+  transition: color 0.15s; padding: 6px 0;
+}
+.notify-prefs label:hover { color: var(--text); }
+.notify-prefs label .icon { color: var(--text-faint); }
+.notify-prefs input[type="checkbox"] { accent-color: var(--accent); width: 20px; height: 20px; cursor: pointer; }
+
+.hint { display: flex; gap: 9px; color: var(--text-faint); font-size: 12.5px; margin-top: 18px; line-height: 1.6; }
+.hint .icon { flex-shrink: 0; margin-top: 1px; color: var(--text-faint); }
+.hint code {
+  background: var(--panel-raised); padding: 1px 6px; border-radius: 4px;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--accent-strong);
+}
+.empty { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-faint); font-size: 14px; padding: 60px 0; text-align: center; }
+.empty .icon { width: 28px; height: 28px; opacity: 0.5; }
+
+/* ============================================================
+   Login
+   ============================================================ */
+.login-body {
+  display: flex; align-items: center; justify-content: center; min-height: 100vh;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 900px 600px at 50% 0%, rgba(91,140,255,0.1), transparent 60%);
+}
+.login-form {
+  display: flex; flex-direction: column; gap: 14px; width: 300px;
+  background: var(--panel); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg); padding: 34px 30px;
+  box-shadow: var(--shadow-panel);
+}
+.login-form h1 {
+  font-size: 20px; font-weight: 600; color: var(--text); margin: 0 0 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.login-form h1 .brand-icon { display: block; width: 26px; height: 26px; flex-shrink: 0; }
+.login-form input {
+  background: var(--panel-raised); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 14px 15px; font-size: 16px; font-family: var(--font-ui);
+  transition: border-color 0.15s;
+}
+.login-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.login-form input:hover { border-color: var(--text-faint); }
+.login-form button {
+  justify-content: center;
+  background: var(--accent); color: var(--accent-text); border: none;
+  padding: 14px; font-weight: 600; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 15px; margin-top: 4px;
+}
+.login-form button:hover { background: var(--accent-strong); color: var(--accent-text); }
+.login-form .error {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--alert); font-size: 12.5px; background: var(--alert-soft);
+  border: 1px solid var(--alert); border-radius: var(--radius-sm); padding: 9px 11px;
+}
+
+/* ============================================================
+   Motion detection toast popups
+   ============================================================ */
+.motion-toasts {
+  position: fixed; top: 16px; right: 16px; z-index: 1000;
+  display: flex; flex-direction: column; gap: 10px; max-width: 320px;
+}
+.motion-toast {
+  display: flex; align-items: flex-start; gap: 11px;
+  background: var(--panel); border: 1px solid var(--alert);
+  border-radius: var(--radius); padding: 13px 14px;
+  box-shadow: var(--shadow-panel);
+  animation: toast-in 0.2s ease-out;
+}
+@keyframes toast-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.motion-toast-icon {
+  color: var(--alert); flex-shrink: 0; margin-top: 1px;
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+.motion-toast-body { display: flex; flex-direction: column; gap: 3px; font-size: 13px; flex: 1; min-width: 0; }
+.motion-toast-body strong {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+  font-family: var(--font-mono); color: var(--alert); font-weight: 600;
+}
+.motion-toast-body span { color: var(--text-dim); font-size: 12.5px; }
+.motion-toast-body span:nth-of-type(2) { font-family: var(--font-mono); color: var(--text-faint); font-size: 11.5px; }
+.motion-toast-body a {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--accent-strong); text-decoration: none; font-size: 12.5px; margin-top: 4px; font-weight: 600;
+}
+.motion-toast-body a:hover { text-decoration: underline; }
+.motion-toast-close {
+  background: none; border: none; color: var(--text-faint); cursor: pointer;
+  padding: 0; display: flex;
+}
+.motion-toast-close:hover { color: var(--text); }
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 900px) {
+  main { padding: 16px; }
+  .camera-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important; }
+  .recordings-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  /* Column count is forced above via !important at this breakpoint, so
+     the "Colonne" selector has no effect here -- hide it instead of
+     leaving a control that silently does nothing. "Ricarica tutte"
+     stays visible since it's still functional at any width. */
+  .grid-controls label, .grid-controls select { display: none; }
+  .grid-controls { justify-content: flex-end; }
+}
+
+@media (max-width: 600px) {
+  .topnav { padding: 0 12px; gap: 0; }
+  .topnav .brand { margin-right: 8px; }
+  .topnav .brand span:not(.icon) { display: none; }
+  .topnav a span:not(.icon) { display: none; }
+  .topnav a { padding: 9px; }
+  main { padding: 10px; }
+
+  .camera-grid { grid-template-columns: 1fr !important; height: auto; }
+  .camera-tile { aspect-ratio: 16/9; }
+  .grid-controls { flex-wrap: wrap; }
+
+  .recordings-grid { grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 8px; }
+
+  .camera-row { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .notify-prefs { margin-left: 0; }
+  .diagnostics { flex-direction: column; align-items: stretch; }
+
+  .filters { gap: 6px; }
+  .filters a { padding: 5px 10px; font-size: 12px; }
+
+  .pagination { gap: 12px; }
+  .page-nav { padding: 7px 12px; }
+  .page-nav span:not(.icon) { display: inline; }
+
+  .login-form { width: 88%; max-width: 300px; padding: 28px 24px; }
+
+  .motion-toasts { left: 8px; right: 8px; max-width: none; top: 8px; }
+}
+
+/* Large screens (tablet in landscape docked as a wall display, smart TV
+   browser): everything below is sized/spaced for a desk-distance mouse
+   view, which reads too small from a couch or across a room. Scale up
+   text, icons and touch/remote targets instead of just stretching the
+   grid wider. */
+@media (min-width: 1400px) {
+  main { padding: 32px; }
+  .topnav { height: 72px; padding: 0 32px; }
+  .topnav .brand { font-size: 17px; }
+  .topnav .brand .brand-icon { width: 26px; height: 26px; }
+  .topnav a { font-size: 15px; padding: 15px 20px; gap: 9px; }
+  .topnav a .icon { width: 19px; height: 19px; }
+  .camera-grid { height: calc(100vh - 164px); gap: 14px; }
+  .camera-label { font-size: 14px; padding: 7px 13px 7px 10px; gap: 8px; }
+  .live-dot { width: 8px; height: 8px; }
+  .camera-tile::before, .camera-tile::after { width: 24px; height: 24px; }
+  .tile-reload { width: 42px; height: 42px; }
+  .tile-reload .icon-sm { width: 18px; height: 18px; }
+  .tile-error { font-size: 13px; padding: 12px 16px; }
+  .grid-controls { font-size: 14px; margin-bottom: 20px; }
+  .reload-all, .grid-controls select { font-size: 14px; padding: 12px 18px; }
+}
+
+/* ============================================================
+   Video viewer (prev/next of the same camera) + watched marks
+   ============================================================ */
+.viewer-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; min-width: 0; }
+.viewer-head .recording-meta-text { flex: 1; }
+.viewer-video {
+  width: 100%; max-width: 100%; height: auto; aspect-ratio: 16/9; max-height: 72vh;
+  object-fit: contain; display: block; background: #000; box-sizing: border-box;
+  border-radius: var(--radius); border: 1px solid var(--border-soft);
+}
+.viewer-nav { margin-top: 16px; }
+.viewer-nav .page-nav { padding: 12px 22px; font-size: 14px; }
+.recording-card { position: relative; }
+.recording-card.seen img { opacity: 0.55; }
+.recording-card.seen::after {
+  content: "visto"; position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65); color: var(--text-dim); font-size: 11px; font-family: var(--font-mono);
+}
+.recording-card.last-seen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft); }
+.recording-card.last-seen::after { content: "ultimo visto"; color: var(--accent-strong); }

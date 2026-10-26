@@ -1,0 +1,28 @@
+<label class="switch {{ 'unknown' if is_on is none }}" id="toggle-{{ camera.name }}">
+  <input type="checkbox"
+         {% if is_on %}checked{% endif %}
+         hx-post="/api/cameras/{{ camera.name }}/toggle"
+         hx-vals="js:{state: event.target.checked ? 'on' : 'off'}"
+         hx-target="#toggle-{{ camera.name }}"
+         hx-swap="outerHTML">
+  <span class="slider"></span>
+</label>
+{% if is_on is none %}
+<span class="status-unknown">
+  <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+  {{ t('state_unavailable') }}
+</span>
+{% endif %}
+{% if show_info %}
+<span id="info-{{ camera.name }}" class="cam-info {{ 'online' if online else 'offline' }}" hx-swap-oob="true">
+  <span class="cam-dot"></span>
+  {% if camera.ip %}{{ camera.ip }} · {% endif %}
+  {% if not camera.status_url %}
+  {{ t('status_not_configured') }}
+  {% elif not online %}
+  {{ t('offline') }}
+  {% else %}
+  {{ t('online') }}{% if info %}{% if info.wifi is not none %} · WiFi {{ info.wifi }}%{% endif %}{% if info.uptime %} · {{ t('up_for', uptime=info.uptime) }}{% endif %}{% if info.fw %} · fw {{ info.fw }}{% endif %}{% endif %}
+  {% endif %}
+</span>
+{% endif %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nav_recordings') }}{% endblock %}
+{% block content %}
+
+{% set qs_camera = ('camera=' + selected_camera + '&') if selected_camera else '' %}
+
+<div class="filters">
+  <a href="/recordings?period={{ period }}" class="{{ 'active' if not selected_camera }}">{{ t('all_cameras') }}</a>
+  {% for cam in cameras %}
+  <a href="/recordings?camera={{ cam.name }}&period={{ period }}" class="{{ 'active' if selected_camera == cam.name }}">{{ cam.name }}</a>
+  {% endfor %}
+  <button hx-post="/api/rescan" hx-swap="none" onclick="this.querySelector('span').textContent=T('scan_started')">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+    <span>{{ t('rescan') }}</span>
+  </button>
+</div>
+
+<div class="filters secondary">
+  <a href="/recordings?{{ qs_camera }}period=recent" class="{{ 'active' if period != 'all' }}">{{ t('last_2_days') }}</a>
+  <a href="/recordings?{{ qs_camera }}period=all" class="{{ 'active' if period == 'all' }}">{{ t('all_recordings') }}</a>
+</div>
+
+{% include "_recordings_list.html" %}
+{% endblock %}

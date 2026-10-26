@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ rec.camera }} · {{ t('recording') }}{% endblock %}
+{% block content %}
+{% set prev_url = ('/recordings/view?path=' + (prev | urlencode) + '&back=' + (back | urlencode)) if prev else '' %}
+{% set next_url = ('/recordings/view?path=' + (next | urlencode) + '&back=' + (back | urlencode)) if next else '' %}
+
+<div class="viewer-head">
+  <a class="page-nav" href="{{ back }}">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+    <span>{{ t('nav_recordings') }}</span>
+  </a>
+  <div class="recording-meta-text">
+    <span class="camera-name">{{ rec.camera }}</span>
+    <span class="recording-date" data-ts="{{ rec.mtime }}"></span>
+  </div>
+  <a class="download-btn" href="/recordings/download?path={{ rec.path | urlencode }}" title="{{ t('download') }}" download>
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+  </a>
+</div>
+
+<video class="viewer-video" src="/recordings/file?path={{ rec.path | urlencode }}"
+       poster="/recordings/thumb?path={{ rec.path | urlencode }}" controls autoplay playsinline></video>
+
+<div class="pagination viewer-nav">
+  {% if prev %}
+    <a class="page-nav" id="prev-rec" href="{{ prev_url }}" title="{{ t('previous_title') }}">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>{{ t('previous') }}</span>
+    </a>
+  {% else %}
+    <span class="page-nav disabled">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>{{ t('previous') }}</span>
+    </span>
+  {% endif %}
+  {% if next %}
+    <a class="page-nav" id="next-rec" href="{{ next_url }}" title="{{ t('next_title') }}">
+      <span>{{ t('next') }}</span>
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  {% else %}
+    <span class="page-nav disabled">
+      <span>{{ t('next') }}</span>
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </span>
+  {% endif %}
+</div>
+
+<script>
+  document.querySelectorAll(".recording-date").forEach((el) => {
+    el.textContent = new Date(parseFloat(el.dataset.ts) * 1000).toLocaleString();
+  });
+  // Recordings already watched get a "seen" mark in the grid (per browser).
+  try {
+    const seen = JSON.parse(localStorage.getItem("seenRecordings") || "[]").filter((p) => p !== {{ rec.path | tojson }});
+    seen.push({{ rec.path | tojson }});
+    localStorage.setItem("seenRecordings", JSON.stringify(seen.slice(-500)));
+    localStorage.setItem("lastRecording", {{ rec.path | tojson }});
+  } catch (e) {}
+  // On the phone, pressing play goes straight to full screen (iOS: native player, which rotates
+  // the landscape clip; Android: landscape lock where the browser allows it).
+  const video = document.querySelector(".viewer-video");
+  if (window.matchMedia("(pointer: coarse)").matches) {
+    video.addEventListener("play", () => {
+      if (document.fullscreenElement || video.webkitDisplayingFullscreen) return;
+      if (video.requestFullscreen) {
+        video.requestFullscreen().then(() => screen.orientation && screen.orientation.lock
+          && screen.orientation.lock("landscape").catch(() => {})).catch(() => {});
+      } else if (video.webkitEnterFullscreen) {
+        try { video.webkitEnterFullscreen(); } catch (e) {}
+      }
+    });
+  }
+  // Arrow keys on desktop, horizontal swipe on the phone (outside the video controls).
+  const go = (id) => { const a = document.getElementById(id); if (a) location.href = a.href; };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") go("prev-rec");
+    if (e.key === "ArrowRight") go("next-rec");
+  });
+  let x0 = null, y0 = null;
+  document.addEventListener("touchstart", (e) => {
+    if (e.target.closest("video")) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) go(dx > 0 ? "prev-rec" : "next-rec");
+    x0 = null;
+  });
+</script>
+{% endblock %}

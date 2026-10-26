@@ -1,0 +1,76 @@
+{% set qs_camera = ('camera=' + selected_camera + '&') if selected_camera else '' %}
+{% set back_url = '/recordings?' + qs_camera + 'period=' + period + '&page=' + (page | string) %}
+<div id="recordings-list"
+     {% if page == 1 %}
+     hx-get="/recordings/list?{{ qs_camera }}period={{ period }}&page=1"
+     hx-trigger="every 20s"
+     hx-swap="outerHTML"
+     {% endif %}>
+{% if not recordings %}
+  <p class="empty">
+    <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l22 22"/><path d="M21 6.5L15 10.5V6a2 2 0 00-2-2H8.5"/><path d="M3 6a2 2 0 00-2 2v8a2 2 0 002 2h10.5"/></svg>
+    {{ t('no_recordings_recent') if period != 'all' else t('no_recordings') }}
+  </p>
+{% else %}
+<div class="recordings-grid">
+  {% for rec in recordings %}
+  <div class="recording-card" data-path="{{ rec.path }}">
+    <a href="/recordings/view?path={{ rec.path | urlencode }}&back={{ back_url | urlencode }}">
+      <img src="/recordings/thumb?path={{ rec.path | urlencode }}" loading="lazy">
+    </a>
+    <div class="recording-meta">
+      <div class="recording-meta-text">
+        <span class="camera-name">{{ rec.camera }}</span>
+        <span class="recording-date" data-ts="{{ rec.mtime }}"></span>
+      </div>
+      <a class="download-btn" href="/recordings/download?path={{ rec.path | urlencode }}" title="{{ t('download') }}" download>
+        <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="pagination">
+  {% if page > 1 %}
+    <a class="page-nav" href="/recordings?{{ qs_camera }}period={{ period }}&page={{ page - 1 }}">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>{{ t('prev_short') }}</span>
+    </a>
+  {% else %}
+    <span class="page-nav disabled">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>{{ t('prev_short') }}</span>
+    </span>
+  {% endif %}
+  <span class="page-info">{{ t('page_of', page=page, total=total_pages) }}</span>
+  {% if page < total_pages %}
+    <a class="page-nav" href="/recordings?{{ qs_camera }}period={{ period }}&page={{ page + 1 }}">
+      <span>{{ t('next_short') }}</span>
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  {% else %}
+    <span class="page-nav disabled">
+      <span>{{ t('next_short') }}</span>
+      <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </span>
+  {% endif %}
+</div>
+
+<script>
+  document.querySelectorAll(".recording-date").forEach((el) => {
+    const d = new Date(parseFloat(el.dataset.ts) * 1000);
+    el.textContent = d.toLocaleString();
+  });
+  // "seen" / "last seen" marks, saved by the video viewer in this browser
+  try {
+    const seen = new Set(JSON.parse(localStorage.getItem("seenRecordings") || "[]"));
+    const last = localStorage.getItem("lastRecording");
+    document.querySelectorAll(".recording-card").forEach((card) => {
+      card.classList.toggle("seen", seen.has(card.dataset.path));
+      card.classList.toggle("last-seen", card.dataset.path === last);
+    });
+  } catch (e) {}
+</script>
+{% endif %}
+</div>
