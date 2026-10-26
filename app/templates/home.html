@@ -122,14 +122,18 @@
     video.addEventListener("playing", () => clearTimeout(timer), { once: true });
   }
 
+  const preferNativeHls = !window.chrome || /iPhone|iPad|iPod|CriOS/.test(navigator.userAgent);
+
   function attach(name, video) {
     const src = streams[name];
     if (activePlayers[name]?.watchdog) clearTimeout(activePlayers[name].watchdog);
     activePlayers[name] = { video };
     armWatchdog(name, video, src);
 
-    // 1. Prefer native HLS (Safari/iOS)
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    // 1. Native HLS only on Apple's engine (Safari, and every browser on iOS):
+    // recent desktop Chrome also answers canPlayType() for HLS, but its native
+    // player fails on these streams, so Chromium browsers go through hls.js.
+    if (preferNativeHls && video.canPlayType("application/vnd.apple.mpegurl")) {
 
         video.src = src;
         video.load();

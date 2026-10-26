@@ -4,6 +4,19 @@ A lightweight, self-hosted web dashboard for Yi / Kami cameras running
 [yi-hack](https://github.com/roleoroleo) custom firmware. Built to run on a
 Raspberry Pi next to the cameras.
 
+![Live grid with today's motion counters and a motion popup](docs/screenshots/live.jpg)
+
+<p>
+  <img src="docs/screenshots/recordings.jpg" width="49%" alt="Recordings page">
+  <img src="docs/screenshots/cameras.jpg" width="49%" alt="Cameras page">
+</p>
+<p>
+  <img src="docs/screenshots/motion-today.jpg" width="62%" alt="Today's motion times on a live tile">
+  <img src="docs/screenshots/mobile.jpg" width="24%" alt="Live view on a phone">
+</p>
+
+<sub>Screenshots from a demo setup with synthetic camera feeds.</sub>
+
 - **Live grid**: every camera at once, low-res substream in the grid and full-res when you
   expand a tile, audio on tap. Streams are remuxed by [MediaMTX](https://github.com/bluenviron/mediamtx),
   never transcoded, so a Pi copes easily.
