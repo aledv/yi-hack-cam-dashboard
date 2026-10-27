@@ -145,6 +145,6 @@ class MotionEventsTest(unittest.TestCase):
 
     def test_old_events_pruned(self):
         now = time.time()
-        self.r.add_motion_event("cam1", now - 40 * 86400)
+        self.r.add_motion_event("cam1", now - 400 * 86400)
         self.r.add_motion_event("cam1", now)
         self.assertEqual(len(self.r.motion_events_since(0)["cam1"]), 1)

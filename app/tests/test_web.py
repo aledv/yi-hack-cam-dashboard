@@ -50,13 +50,25 @@ class WebTest(unittest.TestCase):
         expected = {"en": ("Recordings", "Cameras"), "it": ("Registrazioni", "Telecamere")}
         for lang, words in expected.items():
             client = self.client(lang)
-            for path in ("/", "/recordings", "/cameras", "/api/system/status"):
+            for path in ("/", "/recordings", "/cameras", "/stats", "/api/system/status"):
                 resp = client.get(path)
                 self.assertEqual(resp.status_code, 200, f"{path} {lang}")
             page = client.get("/cameras").text
             self.assertIn(f'<html lang="{lang}">', page)
             for word in words:
                 self.assertIn(word, page)
+
+    def test_motion_range(self):
+        recordings.add_motion_event("garden", 1_000_000)
+        recordings.add_motion_event("garden", 1_000_500)
+        data = self.client().get("/api/motion/range", params={"start": 1_000_100, "end": 1_001_000}).json()
+        self.assertEqual(data["cameras"], {"garden": [1_000_500]})
+        self.assertEqual(data["oldest"], 1_000_000)
+
+    def test_stats_page_lists_cameras(self):
+        page = self.client("it").get("/stats").text
+        self.assertIn('data-cam="garden"', page)
+        self.assertIn("Statistiche", page)
 
     def test_login_page_has_switch(self):
         page = TestClient(main.app).get("/login").text

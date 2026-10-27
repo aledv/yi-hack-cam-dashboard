@@ -24,6 +24,8 @@ Raspberry Pi next to the cameras.
   thumbnails, a player with previous/next (arrow keys, swipe), "seen" marks and download.
 - **Motion today**: each live tile shows today's motion count and last time; tap for the
   list, and a time with a matching clip opens it.
+- **Stats**: motion events per hour and camera for any day (today by default), as a
+  stacked bar chart; show/hide cameras and browse back through the history.
 - **Real-time popups** in the browser on every motion event (MQTT → Server-Sent Events).
 - **Notifications** to Telegram, ntfy and/or a generic webhook, with a snapshot.
 - **Camera control**: on/off switch, online state, IP, WiFi signal, uptime and firmware.
@@ -163,7 +165,7 @@ app/
   cameras.py         camera HTTP helpers (on/off, status, status.json)
   notifier.py        Telegram / ntfy / webhook notifications
   mqtt_listener.py   MQTT motion events -> popup, counters, notifications
-  recordings.py      SQLite index of clips, thumbnails, motion events
+  recordings.py      SQLite index of clips, thumbnails, motion events (per day for Stats)
   events.py          in-memory pub/sub for Server-Sent Events
   auth.py            single-user login
   i18n.py            English / Italian strings
@@ -179,7 +181,7 @@ scripts/             password hash helper
 - `config.yml` is reloaded automatically when it changes. Two exceptions need
   `docker compose restart`: new MQTT topics (`camera-app`) and new MediaMTX paths (`mediamtx`).
 - Recordings are indexed in `data/recordings.db`. Thumbnails are generated on first view, and
-  rows for deleted files are pruned at startup. Motion events are kept for 30 days.
+  rows for deleted files are pruned at startup. Motion events are kept for 365 days.
 - The Recordings page shows the last 2 days by default, 30 per page. Page 1 refreshes
   itself every 20 seconds.
 - htmx and hls.js are bundled in `static/vendor/`, so the app works through a VPN without

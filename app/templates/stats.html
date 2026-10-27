@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nav_stats') }}{% endblock %}
+{% block content %}
+
+<div class="stats-head">
+  <h1 class="stats-title">{{ t('stats_title') }}</h1>
+  <div class="stats-day">
+    <button type="button" id="day-prev" class="icon-btn" aria-label="{{ t('stats_prev_day') }}" title="{{ t('stats_prev_day') }}">
+      <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <input type="date" id="day-input" aria-label="{{ t('stats_title') }}">
+    <button type="button" id="day-next" class="icon-btn" aria-label="{{ t('stats_next_day') }}" title="{{ t('stats_next_day') }}">
+      <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <button type="button" id="day-today">{{ t('stats_today') }}</button>
+  </div>
+</div>
+
+<div class="filters stats-cams" id="cam-chips">
+  <a href="#" data-all="1">{{ t('stats_all') }}</a>
+  <a href="#" data-none="1">{{ t('stats_none') }}</a>
+  {% for cam in cameras %}
+  <a href="#" class="cam-chip active" data-cam="{{ cam.name }}" aria-pressed="true">
+    <span class="swatch"></span><span>{{ cam.name }}</span><span class="chip-count">0</span>
+  </a>
+  {% endfor %}
+</div>
+
+<section class="stats-panel">
+  <div class="stats-summary"><span id="stats-total"></span></div>
+  <div class="stats-chart" id="stats-chart"></div>
+  <div class="stats-tooltip" id="stats-tooltip" hidden></div>
+  <p class="stats-empty" id="stats-empty" hidden></p>
+</section>
+<p class="stats-note">{{ t('stats_history_note', days=keep_days) }}</p>
+
+<script>
+(function () {
+  const COLORS = ["#5b8cff", "#ff6b6b", "#ffb74d", "#4dd0a1", "#c18bff", "#4fc3f7", "#f48fb1", "#d4e157", "#a1887f", "#90a4ae"];
+  const KEEP_DAYS = {{ keep_days }};
+  const chips = [...document.querySelectorAll(".cam-chip")];
+  const cams = chips.map((chip, i) => {
+    const color = COLORS[i % COLORS.length];
+    chip.querySelector(".swatch").style.background = color;
+    return { name: chip.dataset.cam, color, chip };
+  });
+  const visible = new Set(cams.map((c) => c.name));  // default: all cameras
+  const input = document.getElementById("day-input");
+  const chartEl = document.getElementById("stats-chart");
+  const tooltip = document.getElementById("stats-tooltip");
+  const emptyEl = document.getElementById("stats-empty");
+  const totalEl = document.getElementById("stats-total");
+  let counts = {};  // camera -> [24 hourly counts]
+
+  const pad = (n) => String(n).padStart(2, "0");
+  const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const today = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+
+  function initialDay() {
+    const q = new URLSearchParams(location.search).get("date");
+    return q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? parseDay(q) : today();
+  }
+  let day = initialDay();
+
+  function setLimits() {
+    input.max = ymd(today());
+    input.min = ymd(addDays(today(), -KEEP_DAYS));
+    document.getElementById("day-next").disabled = day >= today();
+    document.getElementById("day-prev").disabled = day <= addDays(today(), -KEEP_DAYS);
+    document.getElementById("day-today").disabled = +day === +today();
+  }
+
+  async function load() {
+    input.value = ymd(day);
+    setLimits();
+    const url = new URL(location.href);
+    if (+day === +today()) url.searchParams.delete("date"); else url.searchParams.set("date", ymd(day));
+    history.replaceState(null, "", url);
+    // local midnight to next local midnight: 23/25 hours on DST days
+    const start = day.getTime() / 1000, end = addDays(day, 1).getTime() / 1000;
+    try {
+      const resp = await fetch(`/api/motion/range?start=${start}&end=${end}`);
+      if (!resp.ok) throw new Error(resp.status);
+      const data = await resp.json();
+      counts = {};
+      for (const c of cams) {
+        const hours = new Array(24).fill(0);
+        for (const ts of data.cameras[c.name] || []) hours[new Date(ts * 1000).getHours()]++;
+        counts[c.name] = hours;
+      }
+      render();
+    } catch {
+      chartEl.replaceChildren();
+      totalEl.textContent = "";
+      emptyEl.textContent = T("stats_load_error");
+      emptyEl.hidden = false;
+    }
+  }
+
+  // whole-number axis step (1, 2, 5, 10, 20, 50...) giving at most 5 gridlines
+  function niceStep(max) {
+    for (let p = 1; ; p *= 10) for (const m of [1, 2, 5]) if (m * p * 5 >= max) return m * p;
+  }
+
+  const SVG = "http://www.w3.org/2000/svg";
+  function el(name, attrs, text) {
+    const e = document.createElementNS(SVG, name);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function render() {
+    const shown = cams.filter((c) => visible.has(c.name));
+    for (const c of cams) {
+      const total = (counts[c.name] || []).reduce((a, b) => a + b, 0);
+      c.chip.querySelector(".chip-count").textContent = total;
+      c.chip.classList.toggle("active", visible.has(c.name));
+      c.chip.setAttribute("aria-pressed", visible.has(c.name));
+    }
+    const hourly = Array.from({ length: 24 }, (_, h) => shown.map((c) => ({ cam: c, n: counts[c.name]?.[h] || 0 })));
+    const dayTotal = hourly.flat().reduce((a, x) => a + x.n, 0);
+    totalEl.textContent = shown.length ? T("stats_total", { n: dayTotal }) : "";
+    emptyEl.hidden = !(shown.length === 0 || dayTotal === 0);
+    emptyEl.textContent = shown.length === 0 ? T("stats_no_camera") : T("stats_no_events");
+
+    const W = Math.max(chartEl.clientWidth, 280), H = W < 500 ? 220 : 300;
+    const m = { top: 12, right: 8, bottom: 26, left: 34 };
+    const iw = W - m.left - m.right, ih = H - m.top - m.bottom;
+    const peak = Math.max(1, ...hourly.map((col) => col.reduce((a, x) => a + x.n, 0)));
+    const step = niceStep(peak), max = Math.ceil(peak / step) * step;
+    const y = (v) => m.top + ih - (v / max) * ih;
+    const bw = iw / 24, gap = Math.max(1, bw * 0.18);
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": T("stats_title") });
+
+    for (let v = 0; v <= max; v += step) {
+      svg.append(el("line", { x1: m.left, x2: W - m.right, y1: y(v), y2: y(v), class: "grid" }));
+      svg.append(el("text", { x: m.left - 6, y: y(v) + 4, class: "axis", "text-anchor": "end" }, v));
+    }
+    const labelEvery = W < 500 ? 3 : 2;
+    hourly.forEach((col, h) => {
+      const x = m.left + h * bw;
+      let acc = 0;
+      for (const { cam, n } of col) {
+        if (!n) continue;
+        svg.append(el("rect", { x: x + gap / 2, width: bw - gap, y: y(acc + n), height: y(acc) - y(acc + n), fill: cam.color, rx: 1.5 }));
+        acc += n;
+      }
+      if (h % labelEvery === 0) svg.append(el("text", { x: x + bw / 2, y: H - 8, class: "axis", "text-anchor": "middle" }, pad(h)));
+      const hit = el("rect", { x, y: m.top, width: bw, height: ih, class: "hit" });
+      hit.addEventListener("pointerenter", (e) => showTip(e, h, col, x + bw / 2, W));
+      hit.addEventListener("click", (e) => showTip(e, h, col, x + bw / 2, W));
+      hit.addEventListener("pointerleave", () => { tooltip.hidden = true; });
+      svg.append(hit);
+    });
+    chartEl.replaceChildren(svg);
+  }
+
+  function showTip(e, h, col, cx, W) {
+    const rows = col.filter((x) => x.n).sort((a, b) => b.n - a.n);
+    const total = rows.reduce((a, x) => a + x.n, 0);
+    tooltip.replaceChildren();
+    const head = document.createElement("strong");
+    head.textContent = `${T("stats_hour", { from: pad(h), to: pad((h + 1) % 24) })} · ${T("stats_total", { n: total })}`;
+    tooltip.append(head);
+    for (const { cam, n } of rows) {
+      const row = document.createElement("div");
+      const sw = document.createElement("span");
+      sw.className = "swatch"; sw.style.background = cam.color;
+      row.append(sw, document.createTextNode(` ${cam.name}: ${n}`));
+      tooltip.append(row);
+    }
+    tooltip.hidden = false;
+    const left = Math.min(Math.max(cx - tooltip.offsetWidth / 2, 0), W - tooltip.offsetWidth);
+    tooltip.style.left = `${left}px`;
+  }
+
+  document.getElementById("cam-chips").addEventListener("click", (e) => {
+    const a = e.target.closest("a");
+    if (!a) return;
+    e.preventDefault();
+    if (a.dataset.all) cams.forEach((c) => visible.add(c.name));
+    else if (a.dataset.none) visible.clear();
+    else if (visible.has(a.dataset.cam)) visible.delete(a.dataset.cam);
+    else visible.add(a.dataset.cam);
+    render();
+  });
+  input.addEventListener("change", () => { if (input.value) { day = parseDay(input.value); load(); } });
+  document.getElementById("day-prev").addEventListener("click", () => { day = addDays(day, -1); load(); });
+  document.getElementById("day-next").addEventListener("click", () => { day = addDays(day, 1); load(); });
+  document.getElementById("day-today").addEventListener("click", () => { day = today(); load(); });
+  // today's chart follows new motion events live (same SSE as the popups)
+  window.addEventListener("camera-motion", () => { if (+day === +today()) load(); });
+  let resizeTimer;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
+  load();
+})();
+</script>
+{% endblock %}

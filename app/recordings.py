@@ -75,7 +75,7 @@ def set_camera_settings(camera: str, notify: bool):
         )
 
 
-MOTION_KEEP_DAYS = 30
+MOTION_KEEP_DAYS = 365
 # A clip lands on disk when the camera has finished recording and uploaded it,
 # so it can be indexed up to a few minutes after the motion event.
 CLIP_MATCH_BEFORE = 30
@@ -110,6 +110,21 @@ def motion_events_since(since: float) -> dict[str, list[dict]]:
         clip = next((path for mtime, path in by_cam.get(camera, []) if lo <= mtime <= hi), None)
         result.setdefault(camera, []).append({"ts": ts, "clip": clip})
     return result
+
+
+def motion_events_between(start: float, end: float) -> dict:
+    """Motion events in [start, end) as epoch seconds per camera, oldest first, plus
+    the oldest stored event (for the Stats page: the browser buckets them by hour
+    in its own time zone)."""
+    with _lock, _connect() as conn:
+        rows = conn.execute(
+            "SELECT camera, ts FROM motion_events WHERE ts >= ? AND ts < ? ORDER BY ts", (start, end)
+        ).fetchall()
+        (oldest,) = conn.execute("SELECT MIN(ts) FROM motion_events").fetchone()
+    cameras: dict[str, list[float]] = {}
+    for camera, ts in rows:
+        cameras.setdefault(camera, []).append(ts)
+    return {"cameras": cameras, "oldest": oldest}
 
 
 def _make_thumbnail(video_path: Path) -> str | None:

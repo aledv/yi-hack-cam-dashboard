@@ -631,3 +631,46 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 }
 .recording-card.last-seen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft); }
 .recording-card.last-seen::after { content: "ultimo visto"; color: var(--accent-strong); }
+
+/* ============================================================
+   Stats (motion events per hour)
+   ============================================================ */
+.stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.stats-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; margin: 0; }
+.stats-day { display: flex; align-items: center; gap: 6px; }
+.stats-day input[type="date"] {
+  background: var(--panel-raised); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 10px; font: 500 13px var(--font-ui); color-scheme: dark;
+}
+.stats-day .icon-btn { padding: 9px 10px; }
+.stats-day button:disabled { opacity: 0.4; cursor: default; border-color: var(--border); color: var(--text); background: var(--panel-raised); }
+.stats-cams a { display: inline-flex; align-items: center; gap: 7px; }
+.stats-cams .cam-chip:not(.active) { opacity: 0.55; }
+.stats-cams .cam-chip:not(.active) .swatch { background: transparent !important; outline: 1.5px solid var(--text-faint); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.chip-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); }
+.cam-chip.active .chip-count { color: inherit; }
+.stats-panel {
+  position: relative; background: var(--panel); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg); padding: 14px 14px 8px; box-shadow: var(--shadow-panel);
+}
+.stats-summary { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-dim); margin-bottom: 6px; min-height: 16px; }
+.stats-chart svg { display: block; touch-action: manipulation; }
+.stats-chart .grid { stroke: var(--border-soft); stroke-width: 1; }
+.stats-chart .axis { fill: var(--text-faint); font: 10.5px var(--font-mono); }
+.stats-chart .hit { fill: transparent; cursor: pointer; }
+.stats-chart .hit:hover { fill: rgba(255, 255, 255, 0.04); }
+.stats-tooltip {
+  position: absolute; top: 34px; pointer-events: none; z-index: 2;
+  background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 10px; font-size: 12px; box-shadow: var(--shadow-lift); white-space: nowrap;
+}
+.stats-tooltip strong { display: block; margin-bottom: 4px; font-family: var(--font-mono); font-weight: 600; }
+.stats-tooltip div { display: flex; align-items: center; gap: 4px; color: var(--text-dim); }
+.stats-empty { position: absolute; left: 0; right: 0; top: 45%; text-align: center; color: var(--text-dim); font-size: 13px; margin: 0; pointer-events: none; }
+.stats-note { color: var(--text-faint); font-size: 12px; margin-top: 10px; }
+@media (max-width: 600px) {
+  .stats-title { font-size: 17px; }
+  .stats-day { width: 100%; }
+  .stats-day input[type="date"] { flex: 1; min-width: 0; }
+}

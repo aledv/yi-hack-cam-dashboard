@@ -31,6 +31,10 @@
       <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4V8z"/></svg>
       <span>{{ t('nav_recordings') }}</span>
     </a>
+    <a href="/stats" class="{{ 'active' if request.url.path == '/stats' }}">
+      <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="5" y="11" width="3" height="6"/><rect x="10.5" y="5" width="3" height="12"/><rect x="16" y="8" width="3" height="9"/></svg>
+      <span>{{ t('nav_stats') }}</span>
+    </a>
     <a href="/cameras" class="{{ 'active' if request.url.path == '/cameras' }}">
       <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="2"/></svg>
       <span>{{ t('nav_cameras') }}</span>

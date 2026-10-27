@@ -265,6 +265,19 @@ def cameras_page(request: Request):
     )
 
 
+@app.get("/stats", response_class=HTMLResponse)
+def stats_page(request: Request):
+    """Motion events per hour and camera for one day (picked in the browser,
+    default today), with cameras that can be shown/hidden."""
+    redirect = auth.require_login(request)
+    if redirect:
+        return redirect
+    return templates.TemplateResponse(
+        "stats.html",
+        {"request": request, "cameras": config.get_cameras(), "keep_days": recordings.MOTION_KEEP_DAYS},
+    )
+
+
 @app.get("/api/system/status", response_class=HTMLResponse)
 async def system_status(request: Request):
     redirect = auth.require_login(request)
@@ -436,6 +449,16 @@ def motion_today(request: Request, since: float):
     if redirect:
         return redirect
     return recordings.motion_events_since(since)
+
+
+@app.get("/api/motion/range")
+def motion_range(request: Request, start: float, end: float):
+    """Motion events in [start, end) (the browser's local day, epoch seconds)
+    per camera, for the Stats page."""
+    redirect = auth.require_login(request)
+    if redirect:
+        return redirect
+    return recordings.motion_events_between(start, end)
 
 
 @app.get("/api/cameras/{name}/power-status")
