@@ -635,16 +635,24 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 /* ============================================================
    Stats (motion events per hour)
    ============================================================ */
-.stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.stats-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
 .stats-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; margin: 0; }
-.stats-day { display: flex; align-items: center; gap: 6px; }
+.stats-day { display: flex; align-items: center; gap: 8px; }
 .stats-day input[type="date"] {
   background: var(--panel-raised); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 9px 10px; font: 500 13px var(--font-ui); color-scheme: dark;
 }
 .stats-day .icon-btn { padding: 9px 10px; }
 .stats-day button:disabled { opacity: 0.4; cursor: default; border-color: var(--border); color: var(--text); background: var(--panel-raised); }
+.stats-cams { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.stats-cams .cam-list { margin: 0; gap: 8px 10px; }
 .stats-cams a { display: inline-flex; align-items: center; gap: 7px; }
+.chip-toggle { display: inline-flex; align-self: flex-start; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+.chip-toggle a {
+  padding: 6px 14px; font-size: 12px; color: var(--text-dim); text-decoration: none;
+}
+.chip-toggle a + a { border-left: 1px solid var(--border); }
+.chip-toggle a:hover { color: var(--text); background: var(--panel-raised); }
 .stats-cams .cam-chip:not(.active) { opacity: 0.55; }
 .stats-cams .cam-chip:not(.active) .swatch { background: transparent !important; outline: 1.5px solid var(--text-faint); }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
@@ -672,6 +680,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 600px) {
   .stats-title { font-size: 17px; }
   .stats-day { width: 100%; }
+  .stats-cams .cam-list { gap: 8px; }
+  .stats-cams .cam-list a { padding: 7px 12px; }
   .stats-day input[type="date"] { flex: 1; min-width: 0; }
 }
 

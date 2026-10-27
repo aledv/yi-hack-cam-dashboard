@@ -16,14 +16,18 @@
   </div>
 </div>
 
-<div class="filters stats-cams" id="cam-chips">
-  <a href="#" data-all="1">{{ t('stats_all') }}</a>
-  <a href="#" data-none="1">{{ t('stats_none') }}</a>
+<div class="stats-cams" id="cam-chips">
+  <div class="chip-toggle">
+    <a href="#" data-all="1">{{ t('stats_all') }}</a>
+    <a href="#" data-none="1">{{ t('stats_none') }}</a>
+  </div>
+  <div class="filters cam-list">
   {% for cam in cameras %}
   <a href="#" class="cam-chip active" data-cam="{{ cam.name }}" aria-pressed="true">
     <span class="swatch"></span><span>{{ cam.name }}</span><span class="chip-count">0</span>
   </a>
   {% endfor %}
+  </div>
 </div>
 
 <section class="stats-panel">
