@@ -149,7 +149,7 @@
         acc += n;
       }
       if (h % labelEvery === 0) svg.append(el("text", { x: x + bw / 2, y: H - 8, class: "axis", "text-anchor": "middle" }, pad(h)));
-      const hit = el("rect", { x, y: m.top, width: bw, height: ih, class: "hit" });
+      const hit = el("rect", { x, y: m.top, width: bw, height: ih, class: "hit", fill: "transparent" });
       hit.addEventListener("pointerenter", (e) => showTip(e, h, col, x + bw / 2, W));
       hit.addEventListener("click", (e) => showTip(e, h, col, x + bw / 2, W));
       hit.addEventListener("pointerleave", () => { tooltip.hidden = true; });

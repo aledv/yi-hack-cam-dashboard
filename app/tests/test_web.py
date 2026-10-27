@@ -106,6 +106,9 @@ class WebTest(unittest.TestCase):
         self.assertIsNone(main.notify_settings.paused_until())
         client.post("/api/notify/settings", data={"cooldown_min": "10", "send_video": "on"})
 
+    def test_stylesheet_is_versioned(self):
+        self.assertRegex(self.client().get("/cameras").text, r'/static/style\.css\?v=[0-9a-f]{10}"')
+
     def test_login_page_has_switch(self):
         page = TestClient(main.app).get("/login").text
         self.assertIn('href="/lang/it"', page)

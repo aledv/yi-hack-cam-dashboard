@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import logging
 import math
@@ -49,6 +50,18 @@ def schedule_summary(sched: dict) -> str:
 
 
 templates.env.globals["schedule_summary"] = schedule_summary
+
+
+def _asset_version() -> str:
+    """Short hash of the stylesheet, appended as ?v= so browsers (iOS Safari
+    especially) fetch the new CSS after an update instead of a cached copy."""
+    try:
+        return hashlib.sha256(Path("static/style.css").read_bytes()).hexdigest()[:10]
+    except OSError:
+        return "0"
+
+
+templates.env.globals["asset_version"] = _asset_version()
 
 LANG_COOKIE = "lang"
 
