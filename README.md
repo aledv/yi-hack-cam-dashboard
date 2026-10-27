@@ -17,8 +17,8 @@ Raspberry Pi next to the cameras.
 
 <sub>Screenshots from a demo setup with synthetic camera feeds.</sub>
 
-- **Live grid**: every camera at once, low-res substream in the grid and full-res when you
-  expand a tile, audio on tap. Streams are remuxed by [MediaMTX](https://github.com/bluenviron/mediamtx),
+- **Live grid**: every camera at once, in the order you set with **Sort** (saved on the
+  server), low-res substream in the grid and full-res when you expand a tile, audio on tap. Streams are remuxed by [MediaMTX](https://github.com/bluenviron/mediamtx),
   never transcoded, so a Pi copes easily.
 - **Recordings**: browses the motion clips the cameras already upload over FTP, with
   thumbnails, a player with previous/next (arrow keys, swipe), "seen" marks and download.
@@ -27,7 +27,8 @@ Raspberry Pi next to the cameras.
 - **Stats**: motion events per hour and camera for any day (today by default), as a
   stacked bar chart; show/hide cameras and browse back through the history.
 - **Real-time popups** in the browser on every motion event (MQTT → Server-Sent Events).
-- **Notifications** to Telegram, ntfy and/or a generic webhook, with a snapshot.
+- **Notifications** to Telegram, ntfy and/or a generic webhook, with a snapshot and then the
+  clip; per-camera schedule, minimum gap between notifications and a quick pause.
 - **Camera control**: on/off switch, online state, IP, WiFi signal, uptime and firmware.
 - **English and Italian** interface, switchable per browser (EN/IT in the top bar).
 - FastAPI + Jinja2 + HTMX: no Node, no build step, no database server (SQLite).
@@ -88,6 +89,7 @@ Names only. See `.env.example` for details.
 |---|---|
 | `ADMIN_USER`, `ADMIN_PASSWORD_HASH`, `SECRET_KEY` | Single-user login (bcrypt hash, cookie signing key) |
 | `LANGUAGE` | Default interface language: `en` (default) or `it` |
+| `TZ` | Time zone (e.g. `Europe/Rome`) for notification schedules and pauses; default UTC |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Telegram notifications |
 | `NTFY_URL`, `NTFY_TOKEN` | ntfy notifications (token only for protected topics) |
 | `WEBHOOK_URL` | Generic webhook: multipart POST with `message` and optional `file` |
@@ -103,6 +105,18 @@ Every configured channel receives each notification: motion (with the latest cli
 thumbnail) and camera turned on/off. The **Notifications** checkbox on the Cameras page
 turns them off per camera. The same page has a test button per channel and shows which
 channels are configured and whether MQTT is connected.
+
+Motion notifications can be tuned on the Cameras page (popups, counters and Stats
+always record every event):
+
+- **Schedule** per camera: weekdays and time ranges. A range like 22:00–07:00 runs
+  past midnight and belongs to the day it starts on. No range means all day.
+  Uses the container's time zone, so set `TZ`.
+- **Minimum gap per camera** (default 10 min): at most one notification per camera in
+  that window, so a busy camera doesn't flood you.
+- **Then send the clip**: once the camera has uploaded the clip of a notified event,
+  it follows as a second message (Telegram `sendVideo`, ntfy attachment, webhook `file`).
+- **Pause**: all motion notifications off for 1 hour or until 07:00 tomorrow.
 
 ### Language
 
@@ -164,6 +178,8 @@ app/
   config.py          config.yml loading with hot reload
   cameras.py         camera HTTP helpers (on/off, status, status.json)
   notifier.py        Telegram / ntfy / webhook notifications
+  notify_schedule.py per-camera notification schedule (days, time ranges)
+  notify_settings.py minimum gap, clip follow-up, pause
   mqtt_listener.py   MQTT motion events -> popup, counters, notifications
   recordings.py      SQLite index of clips, thumbnails, motion events (per day for Stats)
   events.py          in-memory pub/sub for Server-Sent Events

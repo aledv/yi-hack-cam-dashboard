@@ -21,6 +21,10 @@
     <option value="3">3</option>
     <option value="4">4</option>
   </select>
+  <button id="sortBtn" type="button" class="sort-btn" aria-pressed="false">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 4 7 20"/><polyline points="3 8 7 4 11 8"/><polyline points="17 20 17 4"/><polyline points="13 16 17 20 21 16"/></svg>
+    <span>{{ t('sort') }}</span>
+  </button>
   <button id="reloadAllBtn" type="button" class="reload-all">
     <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
     {{ t('reload_all') }}
@@ -48,6 +52,14 @@
       <div class="tile-motion-list" hidden></div>
     </div>
     <span class="tile-error" id="error-{{ cam.name }}"></span>
+    <div class="tile-sort">
+      <button type="button" data-move="-1" aria-label="{{ t('move_before') }}" title="{{ t('move_before') }}">
+        <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <button type="button" data-move="1" aria-label="{{ t('move_after') }}" title="{{ t('move_after') }}">
+        <svg class="icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
   </div>
   {% endfor %}
 </div>
@@ -314,9 +326,43 @@
     tile._placeholder = placeholder;
 
     tile.addEventListener("click", () => {
+      if (grid.classList.contains("sorting")) return;
       const alreadyExpanded = tile.classList.contains("is-expanded");
       document.querySelectorAll(".camera-tile.is-expanded").forEach(collapseTile);
       if (!alreadyExpanded) expandTile(tile);
+    });
+  });
+
+  // Sort mode: arrows on each tile move it before/after its neighbour; the
+  // order is saved on the server after every move (same on every device).
+  const grid = document.getElementById("cameraGrid");
+  const sortBtn = document.getElementById("sortBtn");
+  sortBtn.addEventListener("click", () => {
+    const on = grid.classList.toggle("sorting");
+    sortBtn.classList.toggle("active", on);
+    sortBtn.setAttribute("aria-pressed", String(on));
+    sortBtn.querySelector("span").textContent = on ? T("sort_done") : T("sort");
+  });
+  grid.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tile-sort button");
+    if (!btn) return;
+    e.stopPropagation();
+    const tile = btn.closest(".camera-tile");
+    const tiles = [...grid.querySelectorAll(".camera-tile")];
+    const target = tiles[tiles.indexOf(tile) + Number(btn.dataset.move)];
+    if (!target) return;
+    // each tile travels with its placeholder comment (see expand/collapse below)
+    if (btn.dataset.move === "-1") {
+      grid.insertBefore(tile._placeholder, target._placeholder);
+    } else {
+      grid.insertBefore(tile._placeholder, target.nextSibling);
+    }
+    grid.insertBefore(tile, tile._placeholder.nextSibling);
+    tile.querySelector("video").play().catch(() => {});
+    fetch("/api/cameras/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: [...grid.querySelectorAll(".camera-tile")].map((t) => t.id.replace(/^tile-/, "")) }),
     });
   });
 
@@ -418,7 +464,6 @@
   window.addEventListener("camera-motion", () => loadMotion());
 
   // Column selector, remembered across visits via localStorage.
-  const grid = document.getElementById("cameraGrid");
   const colSelect = document.getElementById("colSelect");
   const AUTO_COLS = {{ cols }};
 

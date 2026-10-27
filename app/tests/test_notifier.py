@@ -96,6 +96,16 @@ class NotifierTest(unittest.TestCase):
         self.assertEqual(ntfy[2]["content"], b"jpeg")
         self.assertEqual(hook[2]["files"], {"file": (name, b"jpeg")})
 
+    def test_clip_sent_as_video(self):
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
+            f.write(b"mp4")
+        self.addCleanup(os.unlink, f.name)
+        with self.env(**ALL):
+            notifier.notify_sync("Clip", file_path=f.name)
+        tg = Recorder.calls[0]
+        self.assertTrue(tg[1].endswith("/sendVideo"))
+        self.assertEqual(tg[2]["files"], {"video": (os.path.basename(f.name), b"mp4")})
+
     def test_failure_is_reported_not_raised(self):
         Recorder.status = 500
         with self.env(**ALL):

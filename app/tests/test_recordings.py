@@ -109,10 +109,6 @@ class WatcherTest(unittest.TestCase):
                 obs.stop()
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class MotionEventsTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -148,3 +144,26 @@ class MotionEventsTest(unittest.TestCase):
         self.r.add_motion_event("cam1", now - 400 * 86400)
         self.r.add_motion_event("cam1", now)
         self.assertEqual(len(self.r.motion_events_since(0)["cam1"]), 1)
+
+
+class CameraSettingsTest(unittest.TestCase):
+    def test_schedule_column_added_to_old_db(self):
+        import sqlite3
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "data"
+            data.mkdir()
+            with sqlite3.connect(data / "recordings.db") as conn:
+                conn.execute("CREATE TABLE camera_settings (camera TEXT PRIMARY KEY, notify INTEGER NOT NULL)")
+                conn.execute("INSERT INTO camera_settings VALUES ('cam1', 0)")
+            r = load_recordings(str(data))
+            r.init_db()
+            self.assertEqual(r.get_camera_settings("cam1")["schedule"], {"days": list(range(7)), "ranges": []})
+            r.set_camera_schedule("cam1", {"days": [5, 6], "ranges": []})
+            weekend = {"days": [5, 6], "ranges": []}
+            self.assertEqual(r.get_camera_settings("cam1"), {"notify": False, "schedule": weekend})
+            self.assertTrue(r.get_camera_settings("new")["notify"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,30 @@
+<section class="notify-rules" id="notify-rules">
+  <h2>
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    {{ t('notify_rules') }}
+  </h2>
+  <div class="rule">
+    <span class="rule-label">{{ t('pause') }}</span>
+    {% if rules.paused_until %}
+    <span class="status-pill warn">{{ t('paused_until', when=paused_text) }}</span>
+    <button hx-post="/api/notify/pause" hx-vals='{"mode": "resume"}' hx-target="#notify-rules" hx-swap="outerHTML">{{ t('pause_resume') }}</button>
+    {% else %}
+    <span class="status-pill ok">{{ t('active') }}</span>
+    <button hx-post="/api/notify/pause" hx-vals='{"mode": "1h"}' hx-target="#notify-rules" hx-swap="outerHTML">{{ t('pause_1h') }}</button>
+    <button hx-post="/api/notify/pause" hx-vals='{"mode": "tomorrow"}' hx-target="#notify-rules" hx-swap="outerHTML">{{ t('pause_tomorrow') }}</button>
+    {% endif %}
+  </div>
+  <form class="rule" hx-post="/api/notify/settings" hx-trigger="change" hx-target="#notify-rules" hx-swap="outerHTML">
+    <label class="rule-label" for="cooldown">{{ t('cooldown') }}</label>
+    <select id="cooldown" name="cooldown_min">
+      {% for n in cooldown_choices %}
+      <option value="{{ n }}"{% if n == rules.cooldown_min %} selected{% endif %}>{{ t('minutes', n=n) if n else t('cooldown_none') }}</option>
+      {% endfor %}
+    </select>
+    <label class="rule-check" title="{{ t('send_video_hint') }}">
+      <input type="checkbox" name="send_video"{% if rules.send_video %} checked{% endif %}>
+      {{ t('send_video') }}
+    </label>
+    {% if saved %}<span class="test-feedback ok">{{ t('schedule_saved') }}</span>{% endif %}
+  </form>
+</section>

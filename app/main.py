@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -26,6 +27,8 @@ import events
 import i18n
 import mqtt_listener
 import notifier
+import notify_schedule
+import notify_settings
 import recordings
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
@@ -38,6 +41,14 @@ templates = Jinja2Templates(directory="templates")
 templates.env.globals["t"] = i18n.t
 templates.env.globals["i18n"] = i18n
 t = i18n.t
+
+
+def schedule_summary(sched: dict) -> str:
+    labels = {key: t(f"schedule_{key}") for key in ("always", "never", "every_day", "all_day")}
+    return notify_schedule.summary(sched, t("weekdays_short").split(), labels)
+
+
+templates.env.globals["schedule_summary"] = schedule_summary
 
 LANG_COOKIE = "lang"
 
@@ -86,6 +97,15 @@ async def startup():
     task = asyncio.create_task(_log_connectivity())
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
+
+
+def _ordered_cameras() -> list[dict]:
+    """Cameras in the order saved from the Live page; cameras not in it (new
+    ones) follow in config.yml order."""
+    cams = config.get_cameras()
+    order = recordings.get_setting("camera_order", [])
+    rank = {name: i for i, name in enumerate(order)}
+    return sorted(cams, key=lambda cam: rank.get(cam["name"], len(rank)))
 
 
 def _grid_cols(n: int) -> int:
@@ -193,7 +213,7 @@ def home(request: Request):
     redirect = auth.require_login(request)
     if redirect:
         return redirect
-    cams = config.get_cameras()
+    cams = _ordered_cameras()
     return templates.TemplateResponse(
         "home.html",
         {
@@ -216,7 +236,7 @@ def recordings_page(request: Request, camera: str | None = None, page: int = 1, 
         {
             "request": request,
             "recordings": result["items"],
-            "cameras": config.get_cameras(),
+            "cameras": _ordered_cameras(),
             "selected_camera": camera,
             "page": result["page"],
             "total_pages": result["total_pages"],
@@ -252,7 +272,7 @@ def cameras_page(request: Request):
     redirect = auth.require_login(request)
     if redirect:
         return redirect
-    cams = config.get_cameras()
+    cams = _ordered_cameras()
     settings_map = {cam["name"]: recordings.get_camera_settings(cam["name"]) for cam in cams}
     return templates.TemplateResponse(
         "cameras.html",
@@ -260,6 +280,7 @@ def cameras_page(request: Request):
             "request": request,
             "cameras": cams,
             "settings_map": settings_map,
+            **_notify_rules_context(),
             "channels": [(c, notifier.CHANNEL_LABELS[c]) for c in notifier.enabled_channels()],
         },
     )
@@ -274,7 +295,7 @@ def stats_page(request: Request):
         return redirect
     return templates.TemplateResponse(
         "stats.html",
-        {"request": request, "cameras": config.get_cameras(), "keep_days": recordings.MOTION_KEEP_DAYS},
+        {"request": request, "cameras": _ordered_cameras(), "keep_days": recordings.MOTION_KEEP_DAYS},
     )
 
 
@@ -487,6 +508,73 @@ async def update_notify_prefs(
     # of the field (any value) means "checked".
     recordings.set_camera_settings(name, notify=notify is not None)
     return HTMLResponse(status_code=204)
+
+
+def _notify_rules_context(saved: bool = False) -> dict:
+    rules = notify_settings.get()
+    until = rules["paused_until"]
+    when = datetime.fromtimestamp(until) if until else None
+    paused_text = ""
+    if when:
+        paused_text = when.strftime("%H:%M") if when.date() == datetime.now().date() else when.strftime("%d/%m %H:%M")
+    return {
+        "rules": rules,
+        "paused_text": paused_text,
+        "cooldown_choices": notify_settings.COOLDOWN_CHOICES,
+        "saved": saved,
+    }
+
+
+@app.post("/api/notify/settings", response_class=HTMLResponse)
+async def save_notify_settings(request: Request, cooldown_min: int = Form(10), send_video: str | None = Form(None)):
+    redirect = auth.require_login(request)
+    if redirect:
+        return redirect
+    notify_settings.save(cooldown_min, send_video is not None)
+    return templates.TemplateResponse("_notify_rules.html", {"request": request, **_notify_rules_context(saved=True)})
+
+
+@app.post("/api/notify/pause", response_class=HTMLResponse)
+async def pause_notifications(request: Request, mode: str = Form(...)):
+    """Global pause of motion notifications: 1 hour, until tomorrow 07:00, or resume."""
+    redirect = auth.require_login(request)
+    if redirect:
+        return redirect
+    notify_settings.pause(mode)
+    return templates.TemplateResponse("_notify_rules.html", {"request": request, **_notify_rules_context()})
+
+
+@app.post("/api/cameras/order")
+async def save_camera_order(request: Request):
+    """Order of the cameras set on the Live page ("Sort"), JSON {"order": [names]}.
+    Saved on the server, so it's the same on every device."""
+    redirect = auth.require_login(request)
+    if redirect:
+        return redirect
+    try:
+        order = (await request.json()).get("order", [])
+    except ValueError:
+        return HTMLResponse(status_code=400)
+    known = {cam["name"] for cam in config.get_cameras()}
+    clean = list(dict.fromkeys(name for name in order if isinstance(name, str) and name in known))
+    recordings.set_setting("camera_order", clean)
+    return HTMLResponse(status_code=204)
+
+
+@app.post("/api/cameras/{name}/schedule", response_class=HTMLResponse)
+async def update_schedule(request: Request, name: str):
+    """Saves the notification schedule of one camera (Cameras page) and
+    returns its panel again, with the new summary."""
+    redirect = auth.require_login(request)
+    if redirect:
+        return redirect
+    cam = config.get_camera(name)
+    if not cam:
+        return HTMLResponse(t("camera_not_found"), status_code=404)
+    form = await request.form()
+    sched = notify_schedule.normalize(form.getlist("days"), form.getlist("start"), form.getlist("end"))
+    recordings.set_camera_schedule(name, sched)
+    return templates.TemplateResponse("_schedule.html", {"request": request, "cam": cam, "sched": sched, "saved": True})
 
 
 @app.post("/api/cameras/{name}/toggle", response_class=HTMLResponse)

@@ -70,6 +70,42 @@ class WebTest(unittest.TestCase):
         self.assertIn('data-cam="garden"', page)
         self.assertIn("Statistiche", page)
 
+    def test_schedule_saved_and_shown(self):
+        client = self.client("en")
+        resp = client.post(
+            "/api/cameras/garden/schedule", data={"days": ["0", "1", "2", "3", "4"], "start": "22:00", "end": "07:00"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("Mon–Fri · 22:00–07:00", resp.text)
+        self.assertEqual(recordings.get_camera_settings("garden")["schedule"]["ranges"], [["22:00", "07:00"]])
+        self.assertIn("Mon–Fri · 22:00–07:00", client.get("/cameras").text)
+        self.assertEqual(client.post("/api/cameras/nope/schedule", data={}).status_code, 404)
+
+    def test_camera_order_saved(self):
+        config._cameras = [dict(CAMERA, ip="192.168.1.50"), dict(CAMERA, name="garage", mqtt_topic="yicam/g")]
+        try:
+            client = self.client()
+            resp = client.post("/api/cameras/order", json={"order": ["garage", "unknown", "garden"]})
+            self.assertEqual(resp.status_code, 204)
+            self.assertEqual(recordings.get_setting("camera_order"), ["garage", "garden"])
+            page = client.get("/").text
+            self.assertLess(page.index('id="tile-garage"'), page.index('id="tile-garden"'))
+        finally:
+            recordings.set_setting("camera_order", [])
+            config._cameras = [dict(CAMERA, ip="192.168.1.50")]
+
+    def test_notify_rules(self):
+        client = self.client("en")
+        resp = client.post("/api/notify/settings", data={"cooldown_min": "30"})
+        self.assertIn('value="30" selected', resp.text)
+        self.assertEqual(main.notify_settings.get()["cooldown_min"], 30)
+        self.assertFalse(main.notify_settings.get()["send_video"])
+        self.assertIn("Paused until", client.post("/api/notify/pause", data={"mode": "1h"}).text)
+        self.assertIsNotNone(main.notify_settings.paused_until())
+        self.assertIn("Active", client.post("/api/notify/pause", data={"mode": "resume"}).text)
+        self.assertIsNone(main.notify_settings.paused_until())
+        client.post("/api/notify/settings", data={"cooldown_min": "10", "send_video": "on"})
+
     def test_login_page_has_switch(self):
         page = TestClient(main.app).get("/login").text
         self.assertIn('href="/lang/it"', page)

@@ -19,7 +19,7 @@ import httpx
 
 logger = logging.getLogger("camera-app.notifier")
 
-TIMEOUT = 15
+TIMEOUT = 60  # clips (a few MB) take a while to upload
 
 CHANNEL_LABELS = {"telegram": "Telegram", "ntfy": "ntfy", "webhook": "Webhook"}
 
@@ -49,6 +49,12 @@ def _read(file_path: str | None) -> tuple[str, bytes] | None:
 def _send_telegram(client: httpx.Client, message: str, attachment) -> httpx.Response:
     base = f"https://api.telegram.org/bot{_env('TELEGRAM_BOT_TOKEN')}"
     chat_id = _env("TELEGRAM_CHAT_ID")
+    if attachment and attachment[0].lower().endswith(".mp4"):
+        return client.post(
+            f"{base}/sendVideo",
+            data={"chat_id": chat_id, "caption": message, "supports_streaming": "true"},
+            files={"video": attachment},
+        )
     if attachment:
         return client.post(
             f"{base}/sendPhoto",

@@ -2,6 +2,8 @@
 them stays fast even with thousands of files, instead of walking the
 filesystem on every page load. A watchdog observer keeps the index in sync."""
 
+import json
+import logging
 import math
 import os
 import sqlite3
@@ -10,6 +12,7 @@ import threading
 import time
 from pathlib import Path
 
+import notify_schedule
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
@@ -27,6 +30,7 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 THUMB_DIR.mkdir(parents=True, exist_ok=True)
 
 _lock = threading.Lock()
+logger = logging.getLogger("camera-app.recordings")
 
 
 def _connect():
@@ -56,12 +60,50 @@ def init_db():
                 notify INTEGER NOT NULL DEFAULT 1
             )
         """)
+        conn.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(camera_settings)")]
+        if "schedule" not in columns:  # added after the first release
+            conn.execute("ALTER TABLE camera_settings ADD COLUMN schedule TEXT")
 
 
 def get_camera_settings(camera: str) -> dict:
     with _lock, _connect() as conn:
-        row = conn.execute("SELECT notify FROM camera_settings WHERE camera = ?", (camera,)).fetchone()
-    return {"notify": bool(row[0]) if row else True}  # default: notifications on
+        row = conn.execute("SELECT notify, schedule FROM camera_settings WHERE camera = ?", (camera,)).fetchone()
+    try:
+        sched = json.loads(row[1]) if row and row[1] else notify_schedule.DEFAULT
+    except ValueError:
+        sched = notify_schedule.DEFAULT
+    # default: notifications on, at any time
+    return {"notify": bool(row[0]) if row else True, "schedule": sched}
+
+
+def get_setting(key: str, default=None):
+    """App-wide settings (camera order, notification pause...), stored as JSON."""
+    with _lock, _connect() as conn:
+        row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+    try:
+        return json.loads(row[0]) if row else default
+    except ValueError:
+        return default
+
+
+def set_setting(key: str, value):
+    with _lock, _connect() as conn:
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, json.dumps(value)),
+        )
+
+
+def set_camera_schedule(camera: str, sched: dict):
+    with _lock, _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO camera_settings (camera, notify, schedule) VALUES (?, 1, ?)
+            ON CONFLICT(camera) DO UPDATE SET schedule = excluded.schedule
+        """,
+            (camera, json.dumps(sched)),
+        )
 
 
 def set_camera_settings(camera: str, notify: bool):
@@ -284,6 +326,11 @@ def full_scan(cameras: list[dict]):
             remove_file(Path(path))
 
 
+# Called as listener(camera, path) for every new clip seen by the watcher
+# (mqtt_listener uses it to send the clip of a notified motion event).
+clip_listeners: list = []
+
+
 class _RecordingHandler(FileSystemEventHandler):
     def __init__(self, camera_name: str):
         self.camera_name = camera_name
@@ -295,6 +342,11 @@ class _RecordingHandler(FileSystemEventHandler):
         # by mqtt_listener.py from the camera's own motion-detection topic
         # instead, so this doesn't need to run ffmpeg on every new file.
         index_file(Path(event.src_path), self.camera_name, generate_thumb=False)
+        for listener in clip_listeners:
+            try:
+                listener(self.camera_name, Path(event.src_path))
+            except Exception as e:
+                logger.warning(f"Clip listener failed: {type(e).__name__}")
 
     def on_deleted(self, event):
         if event.src_path.endswith(".mp4"):

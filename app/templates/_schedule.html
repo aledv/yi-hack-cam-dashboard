@@ -1,0 +1,37 @@
+<details class="schedule" id="schedule-{{ cam.name }}"{% if saved %} open{% endif %}>
+  <summary title="{{ t('schedule_title') }}">
+    <svg class="icon icon-sm" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+    <span class="schedule-summary">{{ schedule_summary(sched) }}</span>
+  </summary>
+  <form class="schedule-form" hx-post="/api/cameras/{{ cam.name }}/schedule"
+        hx-target="#schedule-{{ cam.name }}" hx-swap="outerHTML">
+    <p class="schedule-title">{{ t('schedule_title') }}</p>
+    <fieldset>
+      <legend>{{ t('schedule_days') }}</legend>
+      <div class="day-chips">
+        {% for day in t('weekdays_short').split() %}
+        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}"{% if loop.index0 in sched.days %} checked{% endif %}><span>{{ day }}</span></label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>{{ t('schedule_ranges') }}</legend>
+      <div class="range-list">
+        {% for start, end in sched.ranges %}
+        <div class="range-row">
+          <input type="time" name="start" value="{{ start }}" required>
+          <span>–</span>
+          <input type="time" name="end" value="{{ end }}" required>
+          <button type="button" class="icon-btn range-remove" aria-label="{{ t('schedule_remove_range') }}" title="{{ t('schedule_remove_range') }}">&times;</button>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="schedule-hint">{{ t('schedule_ranges_hint') }}</p>
+      <button type="button" class="range-add">+ {{ t('schedule_add_range') }}</button>
+    </fieldset>
+    <div class="schedule-actions">
+      <button type="submit" class="primary">{{ t('schedule_save') }}</button>
+      {% if saved %}<span class="test-feedback ok">{{ t('schedule_saved') }}</span>{% endif %}
+    </div>
+  </form>
+</details>
