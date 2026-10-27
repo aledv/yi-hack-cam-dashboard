@@ -108,6 +108,16 @@
     for (let p = 1; ; p *= 10) for (const m of [1, 2, 5]) if (m * p * 5 >= max) return m * p;
   }
 
+  // The chart takes all the height left in the window, so the page fills the
+  // screen without scrolling (at least 220 px on very short screens).
+  function chartHeight() {
+    const note = document.querySelector(".stats-note");
+    const main = document.querySelector("main");
+    const pageBottom = note.getBoundingClientRect().bottom + parseFloat(getComputedStyle(main).paddingBottom || 0);
+    const slack = window.innerHeight - pageBottom;
+    return Math.max(220, Math.floor(chartEl.offsetHeight + slack));
+  }
+
   const SVG = "http://www.w3.org/2000/svg";
   function el(name, attrs, text) {
     const e = document.createElementNS(SVG, name);
@@ -116,7 +126,7 @@
     return e;
   }
 
-  function render() {
+  function render(fixedHeight = 0) {
     const shown = cams.filter((c) => visible.has(c.name));
     for (const c of cams) {
       const total = (counts[c.name] || []).reduce((a, b) => a + b, 0);
@@ -130,7 +140,7 @@
     emptyEl.hidden = !(shown.length === 0 || dayTotal === 0);
     emptyEl.textContent = shown.length === 0 ? T("stats_no_camera") : T("stats_no_events");
 
-    const W = Math.max(chartEl.clientWidth, 280), H = W < 500 ? 220 : 300;
+    const W = Math.max(chartEl.clientWidth, 280), H = fixedHeight || chartHeight();
     const m = { top: 12, right: 8, bottom: 26, left: 34 };
     const iw = W - m.left - m.right, ih = H - m.top - m.bottom;
     const peak = Math.max(1, ...hourly.map((col) => col.reduce((a, x) => a + x.n, 0)));
@@ -160,6 +170,9 @@
       svg.append(hit);
     });
     chartEl.replaceChildren(svg);
+    // margins outside main (body, footer spacing) aren't in chartHeight(): trim once
+    const overflow = document.documentElement.scrollHeight - window.innerHeight;
+    if (!fixedHeight && overflow > 0 && H > 220) render(Math.max(220, H - overflow));
   }
 
   function showTip(e, h, col, cx, W) {
@@ -198,7 +211,7 @@
   // today's chart follows new motion events live (same SSE as the popups)
   window.addEventListener("camera-motion", () => { if (+day === +today()) load(); });
   let resizeTimer;
-  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => render(), 150); });
   load();
 })();
 </script>
