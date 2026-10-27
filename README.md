@@ -1,5 +1,7 @@
 # yi-hack-cam-dashboard
 
+[![CI](https://github.com/aledv/yi-hack-cam-dashboard/actions/workflows/image.yml/badge.svg)](https://github.com/aledv/yi-hack-cam-dashboard/actions/workflows/image.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Image](https://img.shields.io/badge/ghcr.io-yi--hack--cam--dashboard-2496ED?logo=docker&logoColor=white)](https://github.com/aledv/yi-hack-cam-dashboard/pkgs/container/yi-hack-cam-dashboard)
+
 A lightweight, self-hosted web dashboard for Yi / Kami cameras running
 [yi-hack](https://github.com/roleoroleo) custom firmware. Built to run on a
 Raspberry Pi next to the cameras.
@@ -16,6 +18,8 @@ Raspberry Pi next to the cameras.
 </p>
 
 <sub>Screenshots from a demo setup with synthetic camera feeds.</sub>
+
+## Features
 
 - **Live grid**: every camera at once, in the order you set with **Sort** (saved on the
   server), low-res substream in the grid and full-res when you expand a tile, audio on tap. Streams are remuxed by [MediaMTX](https://github.com/bluenviron/mediamtx),
@@ -36,6 +40,19 @@ Raspberry Pi next to the cameras.
 It uses what yi-hack already provides (RTSP, FTP upload of clips, MQTT motion events,
 CGI endpoints), so it does not record or analyse video itself. If you want object
 detection or continuous recording, look at Frigate, Scrypted or Shinobi instead.
+
+## Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Security](#security)
+- [Development](#development)
+- [Project structure](#project-structure)
+- [Notes](#notes)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Requirements
 
@@ -202,6 +219,10 @@ scripts/             password hash helper
   itself every 20 seconds.
 - htmx and hls.js are bundled in `static/vendor/`, so the app works through a VPN without
   internet access. Only Google Fonts is external, and it falls back to system fonts.
+
+## Contributing
+
+Issues and pull requests are welcome. Please run the linters and tests (see [Development](#development)) before opening a pull request.
 
 ## License
 
