@@ -166,6 +166,24 @@ STRINGS: dict[str, dict[str, str]] = {
     "open_clip": {"en": "Open the clip", "it": "Apri la clip"},
     # notification texts and API messages
     "notify_motion": {"en": "Motion detected: {camera}", "it": "Movimento rilevato: {camera}"},
+    # stalled-recording check (stall_check.py)
+    "stall_alert": {
+        "en": "{camera}: motion detected but no clips for {hours}h, the recorder may be stuck",
+        "it": "{camera}: movimento rilevato ma nessun video da {hours}h, la registrazione potrebbe essere bloccata",
+    },
+    "stall_rebooted": {
+        "en": "{camera}: motion without clips for {hours}h, camera rebooted",
+        "it": "{camera}: movimento senza video da {hours}h, telecamera riavviata",
+    },
+    "stall_reboot_failed": {
+        "en": "{camera}: motion without clips for {hours}h, the reboot command failed",
+        "it": "{camera}: movimento senza video da {hours}h, il comando di riavvio non è riuscito",
+    },
+    "stall_still": {
+        "en": "{camera}: still no clips after the reboot, check it by hand",
+        "it": "{camera}: ancora nessun video dopo il riavvio, controllala a mano",
+    },
+    "stall_recovered": {"en": "{camera}: clips are back", "it": "{camera}: i video sono tornati"},
     "notify_motion_clip": {
         "en": "Clip of the motion on {camera} at {time}",
         "it": "Video del movimento su {camera} delle {time}",

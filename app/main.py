@@ -31,6 +31,7 @@ import notifier
 import notify_schedule
 import notify_settings
 import recordings
+import stall_check
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -107,9 +108,10 @@ async def startup():
         if mqtt_listener.MQTT_HOST:
             logger.info(f"MQTT connected: {'yes' if mqtt_listener.is_connected() else 'NO (see the log above)'}")
 
-    task = asyncio.create_task(_log_connectivity())
-    _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
+    for coro in (_log_connectivity(), stall_check.loop()):
+        task = asyncio.create_task(coro)
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
 
 def _ordered_cameras() -> list[dict]:

@@ -32,6 +32,11 @@ cameras:
     # This is what triggers the popup, the counters and the notifications.
     mqtt_topic: yicam-garden/motion_detection
     mqtt_message: motion_start
+    # Optional: stalled-recording check (motion over MQTT but no new clips).
+    # "alert" = notify only, "reboot" = notify and reboot the camera
+    # (reboot_url, default /cgi-bin/reboot.sh on the host of status_url).
+    # Use "alert" for cams that do not come back from a software reboot.
+    # stall_check: reboot
 
   - name: garage
     rtsp_sub: rtsp://192.168.1.51/ch0_1.h264

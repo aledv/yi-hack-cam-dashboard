@@ -154,6 +154,20 @@ def motion_events_since(since: float) -> dict[str, list[dict]]:
     return result
 
 
+def count_motion_between(camera: str, start: float, end: float) -> int:
+    with _lock, _connect() as conn:
+        (count,) = conn.execute(
+            "SELECT COUNT(*) FROM motion_events WHERE camera = ? AND ts >= ? AND ts < ?", (camera, start, end)
+        ).fetchone()
+    return count
+
+
+def latest_recording_mtime(camera: str) -> float | None:
+    with _lock, _connect() as conn:
+        (mtime,) = conn.execute("SELECT MAX(mtime) FROM recordings WHERE camera = ?", (camera,)).fetchone()
+    return mtime
+
+
 def motion_events_between(start: float, end: float) -> dict:
     """Motion events in [start, end) as epoch seconds per camera, oldest first, plus
     the oldest stored event (for the Stats page: the browser buckets them by hour

@@ -33,6 +33,8 @@ Raspberry Pi next to the cameras.
 - **Real-time popups** in the browser on every motion event (MQTT → Server-Sent Events).
 - **Notifications** to Telegram, ntfy and/or a generic webhook, with a snapshot and then the
   clip; per-camera schedule, minimum gap between notifications and a quick pause.
+- **Stalled-recording check**: a camera that still reports motion but stops uploading
+  clips gets a notification and, if you allow it, a reboot (see below).
 - **Camera control**: on/off switch, online state, IP, WiFi signal, uptime and firmware.
 - **English and Italian** interface, switchable per browser (EN/IT in the top bar).
 - FastAPI + Jinja2 + HTMX: no Node, no build step, no database server (SQLite).
@@ -113,6 +115,7 @@ Names only. See `.env.example` for details.
 | `MQTT_HOST`, `MQTT_PORT`, `MQTT_USER`, `MQTT_PASS` | MQTT broker for motion events |
 | `MEDIAMTX_PUBLIC_BASE` | Base URL of MediaMTX as seen by the browser (reverse proxy / HTTPS) |
 | `RECORDINGS_POLL_SECONDS` | Polling interval when recordings live on a network share |
+| `STALL_WINDOW_HOURS`, `STALL_MIN_MOTION`, `STALL_REBOOT_GAP_HOURS` | Stalled-recording check (`stall_check` in config.yml): window (2 h), motion events needed (5), min hours between reboots (6) |
 | `RECORDINGS_DIR`, `APP_PORT` | Docker Compose only: clips folder on the host, published port |
 | `CONFIG_PATH`, `DATA_DIR` | Only for running outside Docker (default `/app/config.yml`, `/app/data`) |
 
@@ -134,6 +137,15 @@ always record every event):
 - **Then send the clip**: once the camera has uploaded the clip of a notified event,
   it follows as a second message (Telegram `sendVideo`, ntfy attachment, webhook `file`).
 - **Pause**: all motion notifications off for 1 hour or until 07:00 tomorrow.
+
+**Stalled recordings.** yi-hack cams sometimes keep publishing motion over MQTT while
+their recorder is stuck, so no clips reach the FTP folder. With `stall_check` on a camera
+in `config.yml`, every 10 minutes the app looks for at least 5 motion events in the last
+2 hours with no clip in that time. `alert` only notifies; `reboot` also calls the camera's
+`cgi-bin/reboot.sh` (at most once every 6 hours, and never twice before the clips come
+back). Cameras switched off or unreachable are skipped. You get a message when a camera
+stalls, after the reboot if it is still stuck, and when clips are back. Some Yi models do
+not come back from a software reboot until power-cycled: use `alert` for those.
 
 ### Language
 
@@ -197,6 +209,7 @@ app/
   notifier.py        Telegram / ntfy / webhook notifications
   notify_schedule.py per-camera notification schedule (days, time ranges)
   notify_settings.py minimum gap, clip follow-up, pause
+  stall_check.py     motion without clips -> notification / camera reboot
   mqtt_listener.py   MQTT motion events -> popup, counters, notifications
   recordings.py      SQLite index of clips, thumbnails, motion events (per day for Stats)
   events.py          in-memory pub/sub for Server-Sent Events
