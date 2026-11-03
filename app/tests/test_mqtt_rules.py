@@ -39,7 +39,7 @@ class MqttRulesTest(unittest.TestCase):
                 side_effect=lambda m, file_path=None: self.sent.append((m, file_path)),
             ),
             mock.patch.object(self.mqtt.events, "broadcast_threadsafe"),
-            mock.patch.object(self.mqtt, "_latest_thumbnail", return_value=None),
+            mock.patch.object(self.mqtt, "_notification_image", return_value=None),
         ]
         for p in patches:
             p.start()
@@ -111,3 +111,46 @@ class MqttRulesTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NotificationImageTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["DATA_DIR"] = self.tmp.name
+        import mqtt_listener
+        import recordings
+
+        self.recordings = importlib.reload(recordings)
+        self.recordings.init_db()
+        self.mqtt = importlib.reload(mqtt_listener)
+        self.cam = dict(CAMERA, status_url="http://cam/cgi-bin/get_configs.sh?conf=camera")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_live_snapshot_saved(self):
+        resp = SimpleNamespace(status_code=200, content=b"\xff\xd8jpeg")
+        with mock.patch.object(self.mqtt.httpx, "get", return_value=resp):
+            path = self.mqtt._notification_image(self.cam)
+        self.assertEqual(Path(path).read_bytes(), b"\xff\xd8jpeg")
+
+    def test_falls_back_to_newest_readable_clip(self):
+        recs = [
+            {"path": "/r/uploading.mp4", "thumbnail": None},
+            {"path": "/r/complete.mp4", "thumbnail": None},
+        ]
+        thumbs = {"/r/uploading.mp4": None, "/r/complete.mp4": "/t/complete.jpg"}
+        with (
+            mock.patch.object(self.mqtt.httpx, "get", side_effect=OSError),
+            mock.patch.object(self.mqtt.recordings, "list_recordings", return_value=recs),
+            mock.patch.object(self.mqtt.recordings, "ensure_thumbnail", side_effect=thumbs.get),
+        ):
+            self.assertEqual(self.mqtt._notification_image(self.cam), "/t/complete.jpg")
+
+    def test_not_a_jpeg_is_ignored(self):
+        resp = SimpleNamespace(status_code=200, content=b"<html>")
+        with (
+            mock.patch.object(self.mqtt.httpx, "get", return_value=resp),
+            mock.patch.object(self.mqtt.recordings, "list_recordings", return_value=[]),
+        ):
+            self.assertIsNone(self.mqtt._notification_image(self.cam))

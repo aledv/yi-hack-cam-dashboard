@@ -25,6 +25,9 @@ cameras:
     # Optional: JSON with uptime / wlan_strength / fw_version, shown on the
     # Cameras page. Default: /cgi-bin/status.json on the host of status_url.
     # info_url: http://192.168.1.50/cgi-bin/status.json
+    # Optional: live JPEG attached to the motion notification.
+    # Default: /cgi-bin/snapshot.sh?res=high&watermark=yes on the host of status_url.
+    # snapshot_url: http://192.168.1.50/cgi-bin/snapshot.sh?res=high&watermark=yes
     # Optional: shown on the Cameras page; default: host of status_url / rtsp URLs.
     # ip: 192.168.1.50
     # Optional: MQTT topic and message the camera publishes on motion

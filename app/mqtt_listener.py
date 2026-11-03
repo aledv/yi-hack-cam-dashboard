@@ -13,8 +13,10 @@ import os
 import threading
 import time
 
+import cameras
 import config
 import events
+import httpx
 import notifier
 import notify_schedule
 import notify_settings
@@ -38,6 +40,12 @@ _last_notified: dict[str, float] = {}
 _pending_clip: dict[str, float] = {}
 _state_lock = threading.Lock()
 
+# snapshot.sh answers in about 1-1.5 s at full resolution
+_SNAPSHOT_TIMEOUT = httpx.Timeout(6.0, connect=1.5)
+# Newest clips tried for the fallback thumbnail: the newest one is often still
+# being uploaded over FTP (half an MP4, ffmpeg cannot read it)
+_THUMB_CANDIDATES = 3
+
 
 def is_connected() -> bool:
     return _connected
@@ -50,15 +58,39 @@ def _camera_for_topic(topic: str) -> dict | None:
     return None
 
 
-def _latest_thumbnail(camera_name: str) -> str | None:
-    """Best-effort: attach a preview of the most recent recording to the
-    notification. Returns None if there's nothing indexed yet (e.g. the
-    file hasn't been written/picked up by the watcher when MQTT fires)."""
-    recs = recordings.list_recordings(camera_name)
-    if not recs:
+def _live_snapshot(cam: dict) -> str | None:
+    """A JPEG taken by the camera right now, saved next to the thumbnails.
+    None if the camera has no snapshot URL or does not answer with a JPEG."""
+    url = cameras.snapshot_url_for(cam)
+    if not url:
         return None
-    latest = recs[0]  # already ordered by mtime desc
-    return latest["thumbnail"] or recordings.ensure_thumbnail(latest["path"])
+    try:
+        resp = httpx.get(url, timeout=_SNAPSHOT_TIMEOUT)
+    except Exception as e:
+        logger.info(f"Snapshot of {cam['name']} failed: {type(e).__name__}")
+        return None
+    if resp.status_code != 200 or not resp.content.startswith(b"\xff\xd8"):
+        logger.info(f"Snapshot of {cam['name']} failed: HTTP {resp.status_code}")
+        return None
+    recordings.THUMB_DIR.mkdir(parents=True, exist_ok=True)
+    path = recordings.THUMB_DIR / f"live-{cam['name']}.jpg"
+    path.write_bytes(resp.content)
+    return str(path)
+
+
+def _latest_thumbnail(camera_name: str) -> str | None:
+    """Fallback preview: the thumbnail of the newest clip that ffmpeg can read.
+    Returns None if there's nothing indexed yet or none of the newest clips is
+    readable (still being uploaded when MQTT fires)."""
+    for rec in recordings.list_recordings(camera_name)[:_THUMB_CANDIDATES]:  # ordered by mtime desc
+        thumb = rec["thumbnail"] or recordings.ensure_thumbnail(rec["path"])
+        if thumb:
+            return thumb
+    return None
+
+
+def _notification_image(cam: dict) -> str | None:
+    return _live_snapshot(cam) or _latest_thumbnail(cam["name"])
 
 
 def _on_message(client, userdata, msg):
@@ -104,7 +136,7 @@ def _on_message(client, userdata, msg):
         if rules["send_video"]:
             _pending_clip[cam["name"]] = ts
 
-    thumb = _latest_thumbnail(cam["name"])
+    thumb = _notification_image(cam)
     notifier.notify_sync(t("notify_motion", camera=cam["name"]), file_path=thumb)
 
 

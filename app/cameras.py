@@ -65,6 +65,18 @@ def info_url_for(cam: dict) -> str | None:
     return urlunsplit((parts.scheme, parts.netloc, "/cgi-bin/status.json", "", ""))
 
 
+def snapshot_url_for(cam: dict) -> str | None:
+    """URL of a live JPEG from the camera (yi-hack snapshot.sh), attached to the
+    motion notification. Explicit `snapshot_url` wins; otherwise it is derived
+    from the host of `status_url`."""
+    if cam.get("snapshot_url"):
+        return cam["snapshot_url"]
+    if not cam.get("status_url"):
+        return None
+    parts = urlsplit(cam["status_url"])
+    return urlunsplit((parts.scheme, parts.netloc, "/cgi-bin/snapshot.sh", "res=high&watermark=yes", ""))
+
+
 def format_uptime(seconds: float) -> str:
     minutes = int(seconds // 60)
     days, minutes = divmod(minutes, 1440)

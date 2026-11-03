@@ -24,6 +24,14 @@ class InfoUrlTest(unittest.TestCase):
     def test_none_without_status_url(self):
         self.assertIsNone(cameras.info_url_for({}))
 
+    def test_snapshot_url_from_status_host(self):
+        cam = {"status_url": "http://192.168.1.50/cgi-bin/get_configs.sh?conf=camera"}
+        self.assertEqual(
+            cameras.snapshot_url_for(cam), "http://192.168.1.50/cgi-bin/snapshot.sh?res=high&watermark=yes"
+        )
+        self.assertEqual(cameras.snapshot_url_for({"snapshot_url": "http://b/s.jpg"}), "http://b/s.jpg")
+        self.assertIsNone(cameras.snapshot_url_for({}))
+
 
 class ParseInfoTest(unittest.TestCase):
     def test_uptime_format(self):

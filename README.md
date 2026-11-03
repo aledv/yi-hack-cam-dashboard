@@ -121,8 +121,8 @@ Names only. See `.env.example` for details.
 
 ### Notifications
 
-Every configured channel receives each notification: motion (with the latest clip's
-thumbnail) and camera turned on/off. The **Notifications** checkbox on the Cameras page
+Every configured channel receives each notification: motion (with a live snapshot from
+the camera, or the latest readable clip's thumbnail if the camera does not answer) and camera turned on/off. The **Notifications** checkbox on the Cameras page
 turns them off per camera. The same page has a test button per channel and shows which
 channels are configured and whether MQTT is connected.
 
